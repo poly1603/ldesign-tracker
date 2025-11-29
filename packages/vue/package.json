@@ -8,77 +8,79 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./es/index.d.ts",
-      "import": "./es/index.js",
-      "require": "./lib/index.cjs",
-      "default": "./es/index.js"
+      "types": "./esm/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./cjs/index.cjs",
+      "default": "./esm/index.js"
     },
     "./composables": {
-      "types": "./es/composables/index.d.ts",
-      "import": "./es/composables/index.js",
-      "require": "./lib/composables/index.cjs",
-      "default": "./es/composables/index.js"
+      "types": "./esm/composables/index.d.ts",
+      "import": "./esm/composables/index.js",
+      "require": "./cjs/composables/index.cjs",
+      "default": "./esm/composables/index.js"
     },
     "./composables/*": {
-      "types": "./es/composables/*.d.ts",
-      "import": "./es/composables/*.js",
-      "require": "./lib/composables/*.cjs",
-      "default": "./es/composables/*.js"
+      "types": "./esm/composables/*.d.ts",
+      "import": "./esm/composables/*.js",
+      "require": "./cjs/composables/*.cjs",
+      "default": "./esm/composables/*.js"
     },
     "./directives": {
-      "types": "./es/directives/index.d.ts",
-      "import": "./es/directives/index.js",
-      "require": "./lib/directives/index.cjs",
-      "default": "./es/directives/index.js"
+      "types": "./esm/directives/index.d.ts",
+      "import": "./esm/directives/index.js",
+      "require": "./cjs/directives/index.cjs",
+      "default": "./esm/directives/index.js"
     },
     "./directives/*": {
-      "types": "./es/directives/*.d.ts",
-      "import": "./es/directives/*.js",
-      "require": "./lib/directives/*.cjs",
-      "default": "./es/directives/*.js"
+      "types": "./esm/directives/*.d.ts",
+      "import": "./esm/directives/*.js",
+      "require": "./cjs/directives/*.cjs",
+      "default": "./esm/directives/*.js"
     },
     "./plugin": {
-      "types": "./es/plugin/index.d.ts",
-      "import": "./es/plugin/index.js",
-      "require": "./lib/plugin/index.cjs",
-      "default": "./es/plugin/index.js"
+      "types": "./esm/plugin/index.d.ts",
+      "import": "./esm/plugin/index.js",
+      "require": "./cjs/plugin/index.cjs",
+      "default": "./esm/plugin/index.js"
     },
     "./plugin/*": {
-      "types": "./es/plugin/*.d.ts",
-      "import": "./es/plugin/*.js",
-      "require": "./lib/plugin/*.cjs",
-      "default": "./es/plugin/*.js"
+      "types": "./esm/plugin/*.d.ts",
+      "import": "./esm/plugin/*.js",
+      "require": "./cjs/plugin/*.cjs",
+      "default": "./esm/plugin/*.js"
     },
     "./plugins": {
-      "types": "./es/plugins/index.d.ts",
-      "import": "./es/plugins/index.js",
-      "require": "./lib/plugins/index.cjs",
-      "default": "./es/plugins/index.js"
+      "types": "./esm/plugins/index.d.ts",
+      "import": "./esm/plugins/index.js",
+      "require": "./cjs/plugins/index.cjs",
+      "default": "./esm/plugins/index.js"
     },
     "./plugins/*": {
-      "types": "./es/plugins/*.d.ts",
-      "import": "./es/plugins/*.js",
-      "require": "./lib/plugins/*.cjs",
-      "default": "./es/plugins/*.js"
+      "types": "./esm/plugins/*.d.ts",
+      "import": "./esm/plugins/*.js",
+      "require": "./cjs/plugins/*.cjs",
+      "default": "./esm/plugins/*.js"
     },
     "./package.json": "./package.json"
   },
-  "main": "./lib/index.cjs",
-  "module": "./es/index.js",
-  "types": "./es/index.d.ts",
-  "unpkg": "./dist/index.js",
-  "jsdelivr": "./dist/index.js",
+  "main": "./cjs/index.cjs",
+  "module": "./esm/index.js",
+  "types": "./esm/index.d.ts",
+  "unpkg": "./dist/index.min.js",
+  "jsdelivr": "./dist/index.min.js",
   "files": [
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "es",
-    "lib",
+    "esm",
+    "cjs",
     "dist"
   ],
   "scripts": {
-    "build": "ldesign-builder build -f esm,cjs",
-    "clean": "rimraf es lib dist"
+    "build": "ldesign-builder build",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "clean": "node -e \"const fs=require('fs'); ['es','esm','cjs','lib','dist','.tsbuildinfo'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch{}})\""
   },
   "dependencies": {
     "@ldesign/tracker-core": "workspace:*"
@@ -90,6 +92,6 @@
     "@ldesign/builder": "workspace:*",
     "vue": "^3.5.13"
   },
-  "typings": "./es/index.d.ts",
+  "typings": "./esm/index.d.ts",
   "browser": "./dist/index.js"
 }

@@ -1,8 +1,7 @@
 {
   "name": "@ldesign/tracker",
   "version": "1.0.0",
-  "private": true,
-  "description": "LDesign 用户行为追踪系统 - 操作记录、行为分析、链路追踪",
+  "description": "LDesign 用户行为追踪系统 - 操作记录、行为分析、链路追踪 (monorepo wrapper)",
   "keywords": [
     "ldesign",
     "tracker",
@@ -12,32 +11,64 @@
     "typescript",
     "vue"
   ],
-  "author": "LDesign Team",
+  "author": "ldesign",
   "license": "MIT",
-  "homepage": "https://github.com/ldesign/ldesign/tree/main/packages/tracker#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ldesign/ldesign.git",
-    "directory": "packages/tracker"
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs"
+    }
   },
-  "bugs": {
-    "url": "https://github.com/ldesign/ldesign/issues"
-  },
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "package.json",
+    "es",
+    "lib",
+    "dist"
+  ],
   "scripts": {
-    "build": "pnpm -r --filter ./packages/** run build",
-    "dev": "pnpm -r --filter ./packages/** run dev",
-    "lint": "eslint . --fix",
-    "lint:check": "eslint .",
+    "build": "ldesign-builder build -f esm,cjs,dts",
+    "build:core": "pnpm --filter='@ldesign/tracker-core' build",
+    "build:vue": "pnpm --filter='@ldesign/tracker-vue' build",
+    "dev": "ldesign-builder build -f esm,cjs,dts --watch",
+    "dev:core": "pnpm --filter='@ldesign/tracker-core' dev",
+    "dev:vue": "pnpm --filter='@ldesign/tracker-vue' dev",
+    "type-check": "pnpm -r --filter='./packages/*' type-check",
+    "clean": "pnpm -r --filter='./packages/*' clean",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "vitest",
-    "test:run": "vitest run",
-    "clean": "pnpm -r --filter ./packages/** run clean"
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "@ldesign/tracker-core": "workspace:*",
+    "@ldesign/tracker-vue": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.0.0",
+    "@ldesign/builder": "workspace:*",
+    "@types/node": "^22.0.0",
     "eslint": "^9.18.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.7.3",
     "vitest": "^2.0.0"
-  }
+  },
+  "private": true
 }
 

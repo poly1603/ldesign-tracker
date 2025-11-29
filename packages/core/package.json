@@ -65,28 +65,18 @@
     "dist"
   ],
   "scripts": {
-    "build": "ldesign-builder build -f esm,cjs",
-    "build:watch": "ldesign-builder build --watch",
-    "dev": "ldesign-builder build --watch",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "clean": "rimraf es lib dist coverage .tsbuildinfo",
+    "build": "ldesign-builder build",
+    "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "clean": "node -e \"const fs=require('fs'); ['es','lib','dist','.tsbuildinfo'].forEach(d=>{try{fs.rmSync(d,{recursive:true,force:true})}catch{}})\""
   },
   "dependencies": {
     "@ldesign/shared": "workspace:*"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^6.0.0",
     "@ldesign/builder": "workspace:*",
     "@types/node": "^22.0.0",
-    "@vitest/ui": "^3.2.4",
-    "eslint": "^9.18.0",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.7.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.7.3"
   },
   "publishConfig": {
     "access": "public"
