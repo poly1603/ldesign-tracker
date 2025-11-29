@@ -1,0 +1,96 @@
+{
+  "name": "@ldesign/tracker-core",
+  "version": "1.0.0",
+  "description": "LDesign 用户行为追踪核心库 - 框架无关的行为收集和分析",
+  "author": "ldesign",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs",
+      "default": "./es/index.js"
+    },
+    "./collectors": {
+      "types": "./es/collectors/index.d.ts",
+      "import": "./es/collectors/index.js",
+      "require": "./lib/collectors/index.cjs",
+      "default": "./es/collectors/index.js"
+    },
+    "./collectors/*": {
+      "types": "./es/collectors/*.d.ts",
+      "import": "./es/collectors/*.js",
+      "require": "./lib/collectors/*.cjs",
+      "default": "./es/collectors/*.js"
+    },
+    "./tracker": {
+      "types": "./es/tracker/index.d.ts",
+      "import": "./es/tracker/index.js",
+      "require": "./lib/tracker/index.cjs",
+      "default": "./es/tracker/index.js"
+    },
+    "./tracker/*": {
+      "types": "./es/tracker/*.d.ts",
+      "import": "./es/tracker/*.js",
+      "require": "./lib/tracker/*.cjs",
+      "default": "./es/tracker/*.js"
+    },
+    "./types": {
+      "types": "./es/types/index.d.ts",
+      "import": "./es/types/index.js",
+      "require": "./lib/types/index.cjs",
+      "default": "./es/types/index.js"
+    },
+    "./types/*": {
+      "types": "./es/types/*.d.ts",
+      "import": "./es/types/*.js",
+      "require": "./lib/types/*.cjs",
+      "default": "./es/types/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "unpkg": "./dist/index.js",
+  "jsdelivr": "./dist/index.js",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "es",
+    "lib",
+    "dist"
+  ],
+  "scripts": {
+    "build": "ldesign-builder build -f esm,cjs",
+    "build:watch": "ldesign-builder build --watch",
+    "dev": "ldesign-builder build --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "clean": "rimraf es lib dist coverage .tsbuildinfo",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@ldesign/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.0.0",
+    "@ldesign/builder": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@vitest/ui": "^3.2.4",
+    "eslint": "^9.18.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "typings": "./es/index.d.ts",
+  "browser": "./dist/index.js"
+}

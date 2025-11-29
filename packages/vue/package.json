@@ -1,0 +1,95 @@
+{
+  "name": "@ldesign/tracker-vue",
+  "version": "1.0.0",
+  "description": "LDesign Vue 用户行为追踪组件 - v-track 指令、composables",
+  "author": "ldesign",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs",
+      "default": "./es/index.js"
+    },
+    "./composables": {
+      "types": "./es/composables/index.d.ts",
+      "import": "./es/composables/index.js",
+      "require": "./lib/composables/index.cjs",
+      "default": "./es/composables/index.js"
+    },
+    "./composables/*": {
+      "types": "./es/composables/*.d.ts",
+      "import": "./es/composables/*.js",
+      "require": "./lib/composables/*.cjs",
+      "default": "./es/composables/*.js"
+    },
+    "./directives": {
+      "types": "./es/directives/index.d.ts",
+      "import": "./es/directives/index.js",
+      "require": "./lib/directives/index.cjs",
+      "default": "./es/directives/index.js"
+    },
+    "./directives/*": {
+      "types": "./es/directives/*.d.ts",
+      "import": "./es/directives/*.js",
+      "require": "./lib/directives/*.cjs",
+      "default": "./es/directives/*.js"
+    },
+    "./plugin": {
+      "types": "./es/plugin/index.d.ts",
+      "import": "./es/plugin/index.js",
+      "require": "./lib/plugin/index.cjs",
+      "default": "./es/plugin/index.js"
+    },
+    "./plugin/*": {
+      "types": "./es/plugin/*.d.ts",
+      "import": "./es/plugin/*.js",
+      "require": "./lib/plugin/*.cjs",
+      "default": "./es/plugin/*.js"
+    },
+    "./plugins": {
+      "types": "./es/plugins/index.d.ts",
+      "import": "./es/plugins/index.js",
+      "require": "./lib/plugins/index.cjs",
+      "default": "./es/plugins/index.js"
+    },
+    "./plugins/*": {
+      "types": "./es/plugins/*.d.ts",
+      "import": "./es/plugins/*.js",
+      "require": "./lib/plugins/*.cjs",
+      "default": "./es/plugins/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "unpkg": "./dist/index.js",
+  "jsdelivr": "./dist/index.js",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "es",
+    "lib",
+    "dist"
+  ],
+  "scripts": {
+    "build": "ldesign-builder build -f esm,cjs",
+    "clean": "rimraf es lib dist"
+  },
+  "dependencies": {
+    "@ldesign/tracker-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  },
+  "devDependencies": {
+    "@ldesign/builder": "workspace:*",
+    "vue": "^3.5.13"
+  },
+  "typings": "./es/index.d.ts",
+  "browser": "./dist/index.js"
+}

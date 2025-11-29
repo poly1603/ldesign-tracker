@@ -1,0 +1,43 @@
+{
+  "name": "@ldesign/tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LDesign 用户行为追踪系统 - 操作记录、行为分析、链路追踪",
+  "keywords": [
+    "ldesign",
+    "tracker",
+    "analytics",
+    "user-behavior",
+    "tracking",
+    "typescript",
+    "vue"
+  ],
+  "author": "LDesign Team",
+  "license": "MIT",
+  "homepage": "https://github.com/ldesign/ldesign/tree/main/packages/tracker#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ldesign/ldesign.git",
+    "directory": "packages/tracker"
+  },
+  "bugs": {
+    "url": "https://github.com/ldesign/ldesign/issues"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter ./packages/** run build",
+    "dev": "pnpm -r --filter ./packages/** run dev",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "clean": "pnpm -r --filter ./packages/** run clean"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.0.0",
+    "eslint": "^9.18.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.0.0"
+  }
+}
+
