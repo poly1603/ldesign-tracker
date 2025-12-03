@@ -141,7 +141,18 @@ export class ClickCollector extends BaseCollector {
 
     // 使用标签名和类名
     const tagName = element.tagName.toLowerCase()
-    const className = element.className?.split(' ')[0]
+
+    // 安全获取 className（处理 SVG 元素的 SVGAnimatedString）
+    let className: string | undefined
+    if (element.className) {
+      // SVG 元素的 className 是 SVGAnimatedString 对象
+      if (typeof element.className === 'string') {
+        className = element.className.split(' ')[0]
+      } else if (element.className.baseVal) {
+        // SVGAnimatedString 有 baseVal 属性
+        className = element.className.baseVal.split(' ')[0]
+      }
+    }
 
     return className ? `click_${tagName}_${className}` : `click_${tagName}`
   }
