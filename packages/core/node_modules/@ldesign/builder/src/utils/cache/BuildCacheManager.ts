@@ -7,7 +7,13 @@
 import * as fs from 'fs-extra'
 import * as path from 'node:path'
 import * as crypto from 'node:crypto'
+import * as zlib from 'node:zlib'
+import { promisify } from 'node:util'
 import { Logger } from '../logger'
+
+// Promisify zlib functions
+const gzip = promisify(zlib.gzip)
+const gunzip = promisify(zlib.gunzip)
 
 /**
  * 缓存条目
@@ -210,8 +216,13 @@ export class BuildCacheManager {
 
       this.stats.hits++
 
+      // 如果条目已压缩，需要解压缩
+      const data = (entry as any).compressed 
+        ? await this.decompressEntry(entry) 
+        : entry.data
+
       this.logger.debug(`缓存命中: ${key}, 耗时: ${Date.now() - startTime}ms`)
-      return entry.data
+      return data
     } catch (error) {
       this.logger.error(`获取缓存失败: ${key}`, error)
       this.stats.misses++
@@ -798,10 +809,77 @@ export class BuildCacheManager {
 
   /**
    * 压缩大条目
+   * 对大于阈值的缓存条目进行 gzip 压缩
    */
   private async compressLargeEntries(): Promise<number> {
-    // 简化实现，实际可以使用 zlib 压缩
-    return 0
+    const COMPRESSION_THRESHOLD = 100 * 1024 // 100KB
+    let compressedCount = 0
+
+    for (const [key, entry] of this.cache) {
+      // 跳过已压缩的条目
+      if ((entry as any).compressed) {
+        continue
+      }
+
+      // 只压缩大于阈值的条目
+      if (entry.metadata.size < COMPRESSION_THRESHOLD) {
+        continue
+      }
+
+      try {
+        const serializedData = JSON.stringify(entry.data)
+        const inputBuffer = Buffer.from(serializedData, 'utf8')
+        const compressedData = await gzip(new Uint8Array(inputBuffer))
+        const compressionRatio = compressedData.length / entry.metadata.size
+
+        // 只有压缩率低于 80% 时才保存压缩版本
+        if (compressionRatio < 0.8) {
+          const compressedEntry: CacheEntry & { compressed?: boolean; originalSize?: number } = {
+            ...entry,
+            data: compressedData.toString('base64'),
+            metadata: {
+              ...entry.metadata,
+              size: compressedData.length
+            }
+          }
+          ;(compressedEntry as any).compressed = true
+          ;(compressedEntry as any).originalSize = entry.metadata.size
+
+          this.cache.set(key, compressedEntry)
+          await this.persistEntry(compressedEntry)
+
+          compressedCount++
+          this.logger.debug(
+            `压缩缓存条目: ${key}, ` +
+            `原始大小: ${entry.metadata.size}, ` +
+            `压缩后: ${compressedData.length}, ` +
+            `压缩率: ${(compressionRatio * 100).toFixed(1)}%`
+          )
+        }
+      } catch (error) {
+        this.logger.warn(`压缩缓存条目失败: ${key}`, error)
+      }
+    }
+
+    return compressedCount
+  }
+
+  /**
+   * 解压缩缓存条目
+   */
+  private async decompressEntry(entry: CacheEntry): Promise<any> {
+    if (!(entry as any).compressed) {
+      return entry.data
+    }
+
+    try {
+      const compressedBuffer = Buffer.from(entry.data, 'base64')
+      const decompressedBuffer = await gunzip(new Uint8Array(compressedBuffer))
+      return JSON.parse(decompressedBuffer.toString('utf8'))
+    } catch (error) {
+      this.logger.error('解压缩缓存条目失败:', error)
+      throw error
+    }
   }
 
   /**

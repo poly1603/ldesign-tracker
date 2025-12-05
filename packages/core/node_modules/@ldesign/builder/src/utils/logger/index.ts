@@ -54,6 +54,17 @@ export {
   type AdvancedProgressBarOptions
 } from './formatters'
 
+// ========== 导出控制台报告器 ==========
+export {
+  ConsoleReporter,
+  createConsoleReporter,
+  consoleReporter,
+  type BuildPhase,
+  type FileOutput,
+  type BuildSummary,
+  type ReporterOptions
+} from './ConsoleReporter'
+
 // ========== 默认导出 ==========
 /**
  * 默认导出日志器实例

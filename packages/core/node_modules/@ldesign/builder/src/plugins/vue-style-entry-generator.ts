@@ -30,6 +30,7 @@
 import type { Plugin } from 'rollup'
 import * as fs from 'fs'
 import * as path from 'path'
+import fse from 'fs-extra'
 
 export interface VueStyleEntryOptions {
   /**
@@ -124,10 +125,27 @@ async function generateStyleEntries(
 
     // 检查目录是否存在
     if (!fs.existsSync(fullOutputDir)) {
-      if (verbose) {
-        console.log(`⏭️  跳过不存在的目录: ${outputDir}`)
+      // 如果是 esm 目录，尝试从 es 目录镜像
+      if (path.basename(outputDir) === 'esm') {
+        const esDir = path.join(path.dirname(fullOutputDir), 'es')
+        if (fs.existsSync(esDir)) {
+          if (verbose) {
+            console.log(`📋 从 es 目录镜像到 ${outputDir}`)
+          }
+          // 使用 fs-extra 的 copySync
+          fse.copySync(esDir, fullOutputDir, { overwrite: true })
+        } else {
+          if (verbose) {
+            console.log(`⏭️  跳过不存在的目录: ${outputDir}`)
+          }
+          continue
+        }
+      } else {
+        if (verbose) {
+          console.log(`⏭️  跳过不存在的目录: ${outputDir}`)
+        }
+        continue
       }
-      continue
     }
 
     // 查找所有 CSS 文件

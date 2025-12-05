@@ -17,7 +17,7 @@ if (majorVersion < 16) {
 // 动态导入 CLI
 async function main() {
   try {
-    const { BuilderCLI } = await import('../dist/cli/index.js')
+    const { BuilderCLI } = await import('../dist/index.js')
     await BuilderCLI.createSimpleCLI()
   } catch (error) {
     console.error('❌ CLI 启动失败:', error)

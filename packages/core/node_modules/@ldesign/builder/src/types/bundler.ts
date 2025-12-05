@@ -7,7 +7,7 @@ import type { BundlerFeature } from './adapter'
 /**
  * 支持的打包器类型
  */
-export type BundlerType = 'rollup' | 'rolldown' | 'esbuild' | 'swc'
+export type BundlerType = 'rollup' | 'rolldown' | 'esbuild' | 'swc' | 'vite' | 'webpack' | 'turbopack' | 'parcel'
 
 /**
  * 打包器状态

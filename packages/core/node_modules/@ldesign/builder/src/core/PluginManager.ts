@@ -2,9 +2,10 @@
  * 插件管理器
  * 
  * 负责插件的加载、管理和执行
+ * 支持完整的生命周期钩子管理
  * 
  * @author LDesign Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import { EventEmitter } from 'events'
@@ -12,20 +13,43 @@ import type {
   UnifiedPlugin,
   PluginManagerOptions,
   PluginLoadResult,
-  PluginPerformanceStats
+  PluginPerformanceStats,
+  PluginContext
 } from '../types/plugin'
+import type { BuilderConfig } from '../types/config'
+import type { BuildResult } from '../types/builder'
 import { Logger } from '../utils/logger'
 import { BuilderError } from '../utils/error-handler'
 import { ErrorCode } from '../constants/errors'
 
 /**
+ * 构建生命周期阶段
+ */
+export type BuildPhase = 'beforeBuild' | 'afterBuild' | 'onError' | 'onWarning' | 'beforeWatch' | 'afterWatch'
+
+/**
+ * 生命周期钩子函数类型
+ */
+export type LifecycleHook = (
+  context: PluginContext,
+  data?: any
+) => void | Promise<void>
+
+/**
  * 插件管理器类
+ * 
+ * 功能：
+ * - 插件加载、卸载和管理
+ * - 生命周期钩子管理
+ * - 插件性能监控
+ * - 插件依赖解析
  */
 export class PluginManager extends EventEmitter {
   private logger: Logger
   private options: PluginManagerOptions
   private plugins: Map<string, UnifiedPlugin> = new Map()
   private performanceStats: Map<string, PluginPerformanceStats> = new Map()
+  private lifecycleHooks: Map<BuildPhase, LifecycleHook[]> = new Map()
 
   constructor(options: PluginManagerOptions = {}) {
     super()
@@ -41,6 +65,118 @@ export class PluginManager extends EventEmitter {
     }
 
     this.logger = (options as any).logger || new Logger()
+    
+    // 初始化生命周期钩子 Map
+    this.initializeLifecycleHooks()
+  }
+
+  /**
+   * 初始化生命周期钩子
+   */
+  private initializeLifecycleHooks(): void {
+    const phases: BuildPhase[] = ['beforeBuild', 'afterBuild', 'onError', 'onWarning', 'beforeWatch', 'afterWatch']
+    for (const phase of phases) {
+      this.lifecycleHooks.set(phase, [])
+    }
+  }
+
+  /**
+   * 注册生命周期钩子
+   */
+  registerHook(phase: BuildPhase, hook: LifecycleHook): () => void {
+    const hooks = this.lifecycleHooks.get(phase)
+    if (!hooks) {
+      throw new BuilderError(
+        ErrorCode.PLUGIN_LOAD_ERROR,
+        `无效的生命周期阶段: ${phase}`
+      )
+    }
+    
+    hooks.push(hook)
+    this.logger.debug(`注册生命周期钩子: ${phase}`)
+    
+    // 返回取消注册函数
+    return () => {
+      const index = hooks.indexOf(hook)
+      if (index > -1) {
+        hooks.splice(index, 1)
+        this.logger.debug(`移除生命周期钩子: ${phase}`)
+      }
+    }
+  }
+
+  /**
+   * 执行生命周期钩子
+   */
+  async executeHooks(phase: BuildPhase, context: PluginContext, data?: any): Promise<void> {
+    const hooks = this.lifecycleHooks.get(phase) || []
+    const startTime = Date.now()
+    
+    this.logger.debug(`执行生命周期钩子: ${phase} (${hooks.length} 个钩子)`)
+    
+    for (const hook of hooks) {
+      try {
+        await hook(context, data)
+      } catch (error) {
+        this.logger.error(`生命周期钩子 ${phase} 执行失败:`, error)
+        // 对于 onError 阶段，不继续抛出错误，避免无限递归
+        if (phase !== 'onError') {
+          throw error
+        }
+      }
+    }
+    
+    this.logger.debug(`生命周期钩子 ${phase} 执行完成 (${Date.now() - startTime}ms)`)
+  }
+
+  /**
+   * 构建前钩子
+   */
+  async beforeBuild(config: BuilderConfig, context: PluginContext): Promise<void> {
+    await this.executeHooks('beforeBuild', context, { config })
+    
+    // 同时调用所有插件的 buildStart 钩子
+    for (const plugin of this.plugins.values()) {
+      if (plugin.buildStart) {
+        try {
+          await plugin.buildStart(config)
+        } catch (error) {
+          this.logger.error(`插件 ${plugin.name} buildStart 失败:`, error)
+        }
+      }
+    }
+  }
+
+  /**
+   * 构建后钩子
+   */
+  async afterBuild(result: BuildResult, context: PluginContext): Promise<void> {
+    await this.executeHooks('afterBuild', context, { result })
+  }
+
+  /**
+   * 错误处理钩子
+   */
+  async handleError(error: Error, context: PluginContext): Promise<void> {
+    await this.executeHooks('onError', context, { error })
+    
+    // 同时调用所有插件的 onError 钩子
+    for (const plugin of this.plugins.values()) {
+      if (plugin.onError) {
+        try {
+          await plugin.onError(error, context)
+        } catch (e) {
+          this.logger.error(`插件 ${plugin.name} onError 失败:`, e)
+        }
+      }
+    }
+  }
+
+  /**
+   * 警告处理钩子
+   */
+  async handleWarning(warning: string, context: PluginContext): Promise<void> {
+    await this.executeHooks('onWarning', context, { warning })
   }
 
   /**

@@ -97,6 +97,35 @@ export class LibraryDetector {
       // 检测 package.json 字段
       await this.detectPackageJsonFields(projectPath, scores, evidence)
 
+      // 🧠 智能推断增强
+      // 场景: Vue3 + TSX (无 .vue 文件)
+      // 如果检测到 TSX 文件且有 Vue 依赖，直接判定为 Vue3 并返回
+      if (scores[LibraryType.VUE3] > 0 && scores[LibraryType.TYPESCRIPT] > 0) {
+        const hasVueDep = evidence[LibraryType.VUE3].some(e => e.type === 'dependency')
+        const stats = await this.analyzeSourceFiles(projectPath)
+
+        if (hasVueDep && stats.tsx > 0 && stats.vue === 0) {
+          const forcedEvidence = [
+            ...evidence[LibraryType.VUE3],
+            {
+              type: 'content',
+              description: '检测到 Vue 依赖和 TSX 文件，推断为 Vue3 JSX 项目',
+              weight: 1,
+              source: 'vue3-tsx-inference'
+            }
+          ] as DetectionEvidence[]
+
+          const result: LibraryDetectionResult = {
+            type: LibraryType.VUE3,
+            confidence: 1,
+            evidence: forcedEvidence
+          }
+
+          this.logger.success(`检测完成: ${LibraryType.VUE3} (置信度: 100.0%) [Vue3 JSX 智能推断]`)
+          return result // 直接返回，跳过后续混合框架检测
+        }
+      }
+
       // 单框架 Solid 快速检测
       try {
         const solidFiles = await findFiles(['src/**/*.tsx', 'src/**/*.jsx'], {
@@ -761,7 +790,7 @@ export class LibraryDetector {
           hasReactDep = !!(allDeps.react || allDeps['react-dom'])
         }
       } catch { }
-      
+
       this.logger.debug(`[混合框架检测] React 文件数: ${reactFiles.length}, 分数: ${scores.react}, 有React依赖: ${hasReactDep}`)
       // 必须有 React 依赖才算 React 项目，避免误判 Solid/Preact
       if (hasReactDep && (reactFiles.length > 0 || scores.react > 0.3)) {

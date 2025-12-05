@@ -64,9 +64,7 @@ export function monorepoPackage(options: Partial<BuilderConfig> = {}): BuilderCo
         dir: 'dist',
         format: 'umd',
         minify: true,
-        sourcemap: true,
-        // UMD 优先使用精简入口
-        input: 'src/index-lib.ts'
+        sourcemap: true
       },
 
       ...options.output
@@ -203,8 +201,7 @@ export function vueLibrary(options: Partial<BuilderConfig> = {}): BuilderConfig 
         dir: 'dist',
         format: 'umd',
         minify: true,
-        sourcemap: true,
-        input: 'src/index-lib.ts'
+        sourcemap: true
       },
       ...options.output
     },
@@ -303,8 +300,7 @@ export function reactLibrary(options: Partial<BuilderConfig> = {}): BuilderConfi
         dir: 'dist',
         format: 'umd',
         minify: true,
-        sourcemap: true,
-        input: 'src/index-lib.ts'
+        sourcemap: true
       },
       ...options.output
     },

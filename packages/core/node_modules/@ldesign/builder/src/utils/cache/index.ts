@@ -20,3 +20,12 @@ export {
 export { MemoryCache, type MemoryCacheOptions } from './MemoryCache'
 export { FileSystemCache, type FileSystemCacheOptions } from './FileSystemCache'
 export { RemoteCache, type RemoteCacheOptions } from './RemoteCache'
+
+// 增强版缓存管理器
+export {
+  EnhancedCacheManager,
+  createEnhancedCacheManager,
+  type CacheEntry,
+  type CacheOptions as EnhancedCacheOptions,
+  type CacheStats
+} from './EnhancedCacheManager'

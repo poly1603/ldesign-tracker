@@ -27,6 +27,8 @@ export { RollupAdapter } from './adapters/rollup/RollupAdapter'
 export { RolldownAdapter } from './adapters/rolldown/RolldownAdapter'
 export { EsbuildAdapter } from './adapters/esbuild/EsbuildAdapter'
 export { SwcAdapter } from './adapters/swc/SwcAdapter'
+export { ViteAdapter } from './adapters/vite/ViteAdapter'
+export { TurbopackAdapter } from './adapters/turbopack/TurbopackAdapter'
 export { UnifiedBundlerAdapter } from './adapters/UnifiedBundlerAdapter'
 export type { UnifiedAdapterOptions, BundlerType } from './adapters/UnifiedBundlerAdapter'
 
@@ -256,6 +258,9 @@ export {
 export type {
   MixedFrameworkConfig
 } from './strategies/mixed/MixedFrameworkStrategy'
+
+// CLI 导出
+export { BuilderCLI, createCLI, main as runCLI } from './cli'
 
 /**
  * 默认导出 - LibraryBuilder 类

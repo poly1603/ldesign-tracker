@@ -42,6 +42,7 @@ import path from 'path'
 import fs from 'fs-extra'
 import { getGlobalMemoryManager } from '../utils/memory/MemoryManager'
 import { PackageUpdater } from '../utils/misc/PackageUpdater'
+import { StyleProcessor, getOutputDirsFromConfig } from './StyleProcessor'
 
 /**
  * 带清理方法的适配器接口
@@ -181,6 +182,9 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
 
       // 执行构建
       const result = await this.bundlerAdapter.build(strategyConfig)
+
+      // 处理组件库样式 (TDesign 风格)
+      await this.processComponentStyles(mergedConfig, projectRoot)
 
       // 执行打包后验证（如果启用）
       let validationResult: PostBuildValidationResult | undefined
@@ -433,9 +437,12 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
   async detectLibraryType(projectPath: string): Promise<LibraryType> {
     try {
       const projectRoot = await this.resolveProjectRoot(projectPath)
+      console.log(`[LibraryBuilder] 正在检测库类型，根目录: ${projectRoot}`)
       const result = await this.libraryDetector.detect(projectRoot)
+      console.log(`[LibraryBuilder] 检测结果: ${result.type}, 置信度: ${result.confidence}`)
       return result.type
-    } catch {
+    } catch (error) {
+      console.warn('[LibraryBuilder] 库类型检测失败:', error)
       const fallbackRoot = this.getFallbackRoot()
       const result = await this.libraryDetector.detect(fallbackRoot)
       return result.type
@@ -918,14 +925,14 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
     const bundler = config.bundler || 'rollup'
     const mode = config.mode || 'production'
     const libraryType = config.libraryType || 'unknown'
-    
+
     const modeColor = mode === 'production' ? '\x1b[33m' : '\x1b[36m'
     const reset = '\x1b[0m'
     const blue = '\x1b[34m'
     const cyan = '\x1b[36m'
     const dim = '\x1b[2m'
     const bold = '\x1b[1m'
-    
+
     console.log('')
     console.log(`${cyan}${'─'.repeat(50)}${reset}`)
     console.log(`${blue}${bold}🚀 @ldesign/builder${reset}`)
@@ -948,7 +955,7 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
     const dim = '\x1b[2m'
     const reset = '\x1b[0m'
     const bold = '\x1b[1m'
-    
+
     // 计算文件数量和总大小
     const fileCount = result.outputs?.length || 0
     const totalSize = result.stats?.totalSize
@@ -957,27 +964,27 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     }
-    
+
     const formatDuration = (ms: number): string => {
       if (ms < 1000) return `${ms}ms`
       return `${(ms / 1000).toFixed(2)}s`
     }
-    
+
     // 辅助函数：填充空格到指定长度
     const pad = (text: string, length: number): string => {
       const spaces = length - text.length
       return spaces > 0 ? ' '.repeat(spaces) : ''
     }
-    
+
     // 获取总大小的数值
     const totalSizeBytes = typeof totalSize === 'number' ? totalSize : (totalSize as any)?.raw || 0
-    
+
     const durationText = formatDuration(duration)
     const bundlerText = result.bundler
     const fileCountText = fileCount + ' 个'
     const totalSizeText = totalSizeBytes > 0 ? formatSize(totalSizeBytes) : ''
     const warningText = result.warnings ? result.warnings.length + ' 个' : ''
-    
+
     console.log('')
     console.log(`${green}╭${'─'.repeat(48)}╮${reset}`)
     console.log(`${green}│${reset} ${green}${bold}✓ 构建成功${reset}${' '.repeat(37)}${green}│${reset}`)
@@ -993,5 +1000,38 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
     }
     console.log(`${green}╰${'─'.repeat(48)}╯${reset}`)
     console.log('')
+  }
+
+  /**
+   * 处理组件库样式 (TDesign 风格)
+   * 
+   * 在构建完成后，将样式文件复制/编译到各输出目录
+   */
+  private async processComponentStyles(config: BuilderConfig, projectRoot: string): Promise<void> {
+    try {
+      // 获取输出目录配置
+      const outputDirConfigs = getOutputDirsFromConfig(config)
+
+      if (outputDirConfigs.length === 0) {
+        return
+      }
+
+      // 创建样式处理器 - 传入完整的 OutputDirConfig
+      const styleProcessor = new StyleProcessor({
+        srcDir: path.resolve(projectRoot, 'src'),
+        outputDirs: outputDirConfigs.map(config => ({
+          dir: path.resolve(projectRoot, config.dir),
+          preserveLessSource: config.preserveLessSource
+        })),
+        compileLess: config.style?.preprocessor === 'less' || true,
+        logger: this.logger
+      })
+
+      // 执行样式处理
+      await styleProcessor.process()
+    } catch (error) {
+      // 样式处理失败不阻断构建，只记录警告
+      this.logger.warn('样式处理失败:', (error as Error).message)
+    }
   }
 }

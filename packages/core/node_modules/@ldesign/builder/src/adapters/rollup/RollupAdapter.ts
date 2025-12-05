@@ -460,13 +460,10 @@ export class RollupAdapter implements IBundlerAdapter {
           // 解析 banner/footer/intro/outro
           const banners = await this.resolveBanners(config)
 
-          // 添加样式重组插件 (TDesign 风格)
-          const styleReorganizePlugin = this.styleHandler.createStyleReorganizePlugin(esDir)
-
           configs.push({
             input: esInput,
             external: config.external,
-            plugins: [...basePlugins, ...esPlugins, styleReorganizePlugin],
+            plugins: [...basePlugins, ...esPlugins],
             output: {
               dir: esDir,
               format: 'es',

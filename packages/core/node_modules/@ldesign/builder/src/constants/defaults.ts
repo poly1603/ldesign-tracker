@@ -51,12 +51,12 @@ export const DEFAULT_BUILDER_CONFIG: Omit<
   env: Record<string, Partial<BuilderConfig>>
   library: Required<LibraryBuildOptions>
   // 默认库类型，可以被自动检测覆盖
-  libraryType: LibraryType
+  libraryType?: LibraryType
   qwik?: import('../types/library').QwikLibraryConfig
 } = {
   // 基础配置
   input: 'src/index.ts', // 保留作为兼容，但优先使用 output 中的配置
-  libraryType: LibraryType.TYPESCRIPT, // 默认为 TypeScript 库
+  // libraryType: LibraryType.TYPESCRIPT, // 移除默认值，以启用自动检测
   // 路径别名
   alias: {},
   // 顶层开关：dts 与 sourcemap（可被各格式覆盖）
@@ -92,9 +92,7 @@ export const DEFAULT_BUILDER_CONFIG: Omit<
       dir: 'dist',
       format: 'umd',
       minify: true,
-      sourcemap: true,
-      // UMD 默认单入口：优先使用 index-lib.ts，回退到 index.ts
-      input: 'src/index-lib.ts'
+      sourcemap: true
     }
   },
 

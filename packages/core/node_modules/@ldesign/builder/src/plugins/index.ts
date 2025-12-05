@@ -12,3 +12,7 @@ export { fontHandlerPlugin } from './font-handler'
 export { enhancedLessPlugin } from './less-processor'
 export { vueStyleEntryGenerator } from './vue-style-entry-generator'
 export type { VueStyleEntryOptions } from './vue-style-entry-generator'
+
+// 组件库样式处理插件
+export { createComponentStylePlugin, detectComponentLibraryStructure } from './ComponentStylePlugin'
+export type { ComponentStylePluginOptions } from './ComponentStylePlugin'
