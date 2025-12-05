@@ -38,6 +38,31 @@ export interface BuildOutput {
 export type SourcemapType = boolean | 'inline' | 'hidden'
 
 /**
+ * 数组格式输出配置项
+ * 用于 output: [{ format: 'esm', dir: 'es' }, ...] 格式
+ */
+export interface ArrayOutputItem {
+  /** 输出格式 */
+  format: OutputFormat
+  /** 输出目录 */
+  dir: string
+  /** 是否保留模块结构 */
+  preserveModules?: boolean
+  /** 保留模块根目录 */
+  preserveModulesRoot?: string
+  /** 入口文件名模式 */
+  entryFileNames?: string
+  /** 库名称（UMD/IIFE 格式需要） */
+  name?: string
+  /** 全局变量映射 */
+  globals?: Record<string, string>
+  /** 是否生成 sourcemap */
+  sourcemap?: SourcemapType
+  /** 导出模式 */
+  exports?: 'auto' | 'default' | 'named' | 'none'
+}
+
+/**
  * 格式特定的输出配置
  */
 export interface FormatOutputConfig {
@@ -52,6 +77,12 @@ export interface FormatOutputConfig {
 
   /** 是否保留目录结构 */
   preserveStructure?: boolean
+
+  /** 是否保留模块结构 */
+  preserveModules?: boolean
+
+  /** 保留模块根目录 */
+  preserveModulesRoot?: string
 
   /** 是否生成类型声明文件 */
   dts?: boolean
@@ -106,8 +137,19 @@ export interface OutputConfig {
   /** CommonJS 格式特定配置（true 使用默认配置，false 禁用） */
   cjs?: boolean | FormatOutputConfig
 
+  /** CommonJS 格式别名，等同于 cjs（输出到 lib 目录） */
+  lib?: boolean | FormatOutputConfig
+
   /** UMD 格式特定配置（true 使用默认配置，false 禁用） */
   umd?: boolean | (FormatOutputConfig & {
+    /** 全局变量名 */
+    name?: string
+    /** 全局变量映射 */
+    globals?: Record<string, string>
+  })
+
+  /** UMD 格式别名，等同于 umd（输出到 dist 目录） */
+  dist?: boolean | (FormatOutputConfig & {
     /** 全局变量名 */
     name?: string
     /** 全局变量映射 */

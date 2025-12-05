@@ -69,7 +69,9 @@ export class RolldownAdapter implements IBundlerAdapter {
 
       // 检查是否需要多格式构建
       const outputConfig = config.output
-      const formats = Array.isArray(outputConfig?.format) ? outputConfig.format : [outputConfig?.format || 'esm']
+      // 处理 output 可能是数组的情况
+      const singleOutput = Array.isArray(outputConfig) ? outputConfig[0] : outputConfig
+      const formats = Array.isArray(singleOutput?.format) ? singleOutput.format : [singleOutput?.format || 'esm']
 
       // Rolldown 目前主要支持 ESM，但我们可以尝试构建多个格式
       const supportedFormats = formats.filter(format => ['esm', 'cjs'].includes(format))
@@ -97,13 +99,16 @@ export class RolldownAdapter implements IBundlerAdapter {
         const formatStartTime = Date.now()
 
         try {
-          const result = await rolldown.build(rolldownConfig)
+          // 使用 rolldown() + write() 确保文件被写入磁盘
+          const bundle = await rolldown.rolldown(rolldownConfig)
+          const writeResult = await bundle.write(rolldownConfig.output)
+
           const formatDuration = Date.now() - formatStartTime
           totalDuration += formatDuration
 
           allResults.push({
             format,
-            result,
+            result: writeResult,
             duration: formatDuration
           })
 
@@ -117,12 +122,24 @@ export class RolldownAdapter implements IBundlerAdapter {
       const duration = Date.now() - startTime
 
       // 合并所有构建结果
-      const combinedOutputs = allResults.flatMap(r => r.result.outputs || [])
+      // 注意：rolldown.build() 返回 { output: [...] } 而不是 { outputs: [...] }
+      const combinedOutputs = allResults.flatMap(r => {
+        const outputs = r.result.output || r.result.outputs || []
+        // 转换 rolldown 输出格式
+        return outputs.map((o: any) => ({
+          fileName: o.fileName || o.name || '',
+          code: o.code || '',
+          type: o.type || (o.isEntry ? 'entry' : 'chunk'),
+          format: r.format,
+          size: o.code ? o.code.length : 0,
+          map: o.map || null
+        }))
+      })
       const combinedWarnings = allResults.flatMap(r => r.result.warnings || [])
 
       // 构建结果
-      const totalRawSize = combinedOutputs.reduce((sum, output) => sum + (output.size || 0), 0)
-      const largestOutput = combinedOutputs.reduce((max, o) => (o.size || 0) > (max.size || 0) ? o : max, { size: 0, fileName: '' } as any)
+      const totalRawSize = combinedOutputs.reduce((sum: number, output: any) => sum + (output.size || 0), 0)
+      const largestOutput = combinedOutputs.reduce((max: any, o: any) => (o.size || 0) > (max.size || 0) ? o : max, { size: 0, fileName: '' } as any)
 
       const buildResult: BuildResult = {
         success: allResults.length > 0,
@@ -257,17 +274,21 @@ export class RolldownAdapter implements IBundlerAdapter {
    * 转换配置
    */
   async transformConfig(config: UnifiedConfig): Promise<BundlerSpecificConfig> {
+    // 创建样式处理插件
+    const stylePlugin = await this.createStylePlugin()
+
     // 转换为 Rolldown 配置格式
     const rolldownConfig: any = {
       input: config.input,
       external: config.external,
-      plugins: [] // 暂时禁用所有插件来测试基本功能
+      plugins: [stylePlugin] // 添加样式处理插件
     }
 
     // 转换输出配置 - 实现标准目录结构
     if (config.output) {
-      const outputConfig = config.output
-      const formats = Array.isArray(outputConfig.format) ? outputConfig.format : [outputConfig.format]
+      // 处理 output 可能是数组的情况
+      const outputConfig = Array.isArray(config.output) ? config.output[0] : config.output
+      const formats = Array.isArray(outputConfig?.format) ? outputConfig.format : [outputConfig?.format]
       const format = formats[0] || 'esm' // Rolldown 目前主要支持 ESM
 
       // 根据格式确定输出目录，遵循标准目录结构
@@ -293,12 +314,12 @@ export class RolldownAdapter implements IBundlerAdapter {
       }
 
       rolldownConfig.output = {
-        dir: outputConfig.dir || dir,
-        file: outputConfig.file,
+        dir: outputConfig?.dir || dir,
+        file: outputConfig?.file,
         format: format as any,
-        name: outputConfig.name,
-        sourcemap: outputConfig.sourcemap,
-        globals: outputConfig.globals,
+        name: outputConfig?.name,
+        sourcemap: outputConfig?.sourcemap,
+        globals: outputConfig?.globals,
         entryFileNames: fileName,
         chunkFileNames: fileName
       }
@@ -436,6 +457,98 @@ export class RolldownAdapter implements IBundlerAdapter {
           used: 0,
           available: 0,
           usagePercent: 0
+        }
+      }
+    }
+  }
+
+  /**
+   * 创建样式处理插件
+   * 支持 Less/SCSS/CSS 文件的编译和输出
+   */
+  private async createStylePlugin(): Promise<any> {
+    const self = this
+    const collectedStyles: Map<string, string> = new Map()
+    // 使用顶层导入的 fs-extra 和 path
+    const fsModule = await import('fs-extra')
+    const pathModule = await import('path')
+    const fs = fsModule.default || fsModule
+
+    return {
+      name: 'rolldown-style-plugin',
+
+      // 使用 load 钩子拦截样式文件
+      async load(id: string) {
+        // 检查是否是样式文件
+        if (!/\.(less|scss|sass|css|styl)$/.test(id)) {
+          return null
+        }
+
+        self.logger.debug(`处理样式文件: ${id}`)
+
+        try {
+          if (!await fs.pathExists(id)) {
+            self.logger.warn(`样式文件不存在: ${id}`)
+            return { code: 'export default "";', map: null }
+          }
+
+          const content = await fs.readFile(id, 'utf-8')
+          let css = content
+
+          // 根据文件类型编译样式
+          if (id.endsWith('.less')) {
+            try {
+              const less = await import('less')
+              const result = await less.default.render(content, {
+                filename: id,
+                paths: [pathModule.dirname(id)]
+              })
+              css = result.css
+              self.logger.debug(`Less 编译成功: ${id}`)
+            } catch (e) {
+              self.logger.warn(`Less 编译失败: ${id} - ${(e as Error).message}`)
+              return { code: 'export default "";', map: null }
+            }
+          } else if (id.endsWith('.scss') || id.endsWith('.sass')) {
+            try {
+              const sass = await import('sass')
+              const result = sass.compile(id)
+              css = result.css
+              self.logger.debug(`Sass 编译成功: ${id}`)
+            } catch (e) {
+              self.logger.warn(`Sass 编译失败: ${id} - ${(e as Error).message}`)
+              return { code: 'export default "";', map: null }
+            }
+          }
+
+          // 收集样式用于后续输出
+          collectedStyles.set(id, css)
+
+          // 返回空的 JS 模块（样式已收集）
+          return {
+            code: `/* Style: ${pathModule.basename(id)} */\nexport default "";`,
+            map: null
+          }
+        } catch (error) {
+          self.logger.warn(`加载样式文件失败: ${id}`)
+          return { code: 'export default "";', map: null }
+        }
+      },
+
+      async generateBundle(options: any, bundle: any) {
+        // 将收集的样式输出为 CSS 文件
+        if (collectedStyles.size > 0) {
+          const allCss = Array.from(collectedStyles.values()).join('\n\n')
+          const outputDir = options.dir || 'dist'
+
+          try {
+            await fs.ensureDir(outputDir)
+            const cssPath = pathModule.join(outputDir, 'index.css')
+            await fs.writeFile(cssPath, allCss)
+            self.logger.info(`✅ 样式文件已生成: ${cssPath} (${collectedStyles.size} 个样式文件)`)
+          } catch (error) {
+            self.logger.warn(`样式文件输出失败: ${(error as Error).message}`)
+          }
         }
       }
     }

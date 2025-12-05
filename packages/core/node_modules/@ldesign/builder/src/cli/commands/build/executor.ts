@@ -242,48 +242,109 @@ export async function executeBuild(
     const hasDtsFromCli = originalFormats.includes('dts') || originalFormats.includes('declaration') || originalFormats.includes('types')
     const hasDtsFromConfig = config.dts === true
     const hasDts = hasDtsFromCli || hasDtsFromConfig
-    const formats = Array.isArray(config.output?.format) ? config.output.format : [config.output?.format].filter(Boolean)
 
     if (hasDts) {
       phaseStart = Date.now()
       logger.info('📝 生成类型声明文件...')
 
       const { generateDts } = await import('../../../generators/DtsGenerator')
+      const fse = await import('fs-extra')
       const srcDir = config.input && typeof config.input === 'string' && config.input.startsWith('src/')
         ? 'src'
         : 'src'
 
-      // 为 es 和 lib 目录都生成 d.ts
-      const outputDirs = []
-      if (formats.includes('esm')) outputDirs.push('es')
-      if (formats.includes('cjs')) outputDirs.push('lib')
+      // 从配置中提取需要生成 DTS 的输出目录
+      // 支持数组格式和对象格式配置
+      const outputDirs: string[] = []
+      const outputConfig = config.output
+
+      if (Array.isArray(outputConfig)) {
+        // 数组格式: [{ format: 'esm', dir: 'es' }, ...]
+        for (const item of outputConfig) {
+          const dir = (item as any).dir
+          const format = (item as any).format
+          // 排除 UMD/dist 目录，只为 ESM 和 CJS 生成 DTS
+          if (dir && format !== 'umd' && dir !== 'dist') {
+            if (!outputDirs.includes(dir)) {
+              outputDirs.push(dir)
+            }
+          }
+        }
+      } else if (outputConfig) {
+        // 对象格式: { es: {...}, esm: {...}, lib: {...}, dist: {...} }
+        const oc = outputConfig as any
+        const formats = Array.isArray(oc.format) ? oc.format : [oc.format].filter(Boolean)
+        if (formats.includes('esm')) outputDirs.push('es')
+        if (formats.includes('cjs')) outputDirs.push('lib')
+        // 检查子配置
+        if (oc.es) outputDirs.push('es')
+        if (oc.esm) outputDirs.push('esm')
+        if (oc.cjs || oc.lib) outputDirs.push('lib')
+        // 去重
+        const uniqueDirs = [...new Set(outputDirs)]
+        outputDirs.length = 0
+        outputDirs.push(...uniqueDirs)
+      }
 
       // 如果没有指定其他格式，默认生成到 es 目录
       if (outputDirs.length === 0) {
         outputDirs.push('es')
       }
 
-      for (const outDir of outputDirs) {
-        try {
-          const dtsResult = await generateDts({
-            srcDir,
-            outDir,
-            preserveStructure: true,
-            declarationMap: config.sourcemap === true || config.sourcemap === 'inline',
-            rootDir: process.cwd()
-          })
+      // 优化: 只生成一次 DTS，然后复制到其他目录
+      const primaryDir = outputDirs[0]
+      const otherDirs = outputDirs.slice(1)
 
-          if (dtsResult.success) {
-            logger.success(`✅ 已生成 ${dtsResult.files.length} 个声明文件到 ${outDir}/`)
-          } else {
-            logger.warn(`⚠️  生成声明文件到 ${outDir}/ 时出现错误`)
-            if (dtsResult.errors && dtsResult.errors.length > 0) {
-              dtsResult.errors.forEach(err => logger.error(err))
+      try {
+        // 生成 DTS 到第一个目录
+        const dtsResult = await generateDts({
+          srcDir,
+          outDir: primaryDir,
+          preserveStructure: true,
+          declarationMap: config.sourcemap === true || config.sourcemap === 'inline',
+          rootDir: process.cwd()
+        })
+
+        if (dtsResult.success) {
+          logger.success(`✅ 已生成 ${dtsResult.files.length} 个声明文件到 ${primaryDir}/`)
+
+          // 复制 DTS 文件到其他目录（比重新生成快得多）
+          for (const targetDir of otherDirs) {
+            try {
+              // 确保目标目录存在
+              await fse.ensureDir(targetDir)
+
+              // 复制所有 .d.ts 和 .d.ts.map 文件
+              let copiedCount = 0
+              for (const filePath of dtsResult.files) {
+                // 文件路径是相对于项目根目录的完整路径，如 es/index.d.ts
+                // 需要将 primaryDir 替换为 targetDir
+                const relativePath = path.relative(primaryDir, filePath)
+                const destPath = path.join(targetDir, relativePath)
+
+                // 确保目标文件的目录存在
+                await fse.ensureDir(path.dirname(destPath))
+
+                // 复制文件
+                if (await fse.pathExists(filePath)) {
+                  await fse.copy(filePath, destPath)
+                  copiedCount++
+                }
+              }
+
+              logger.success(`✅ 已复制 ${copiedCount} 个声明文件到 ${targetDir}/`)
+            } catch (copyError) {
+              logger.warn(`⚠️  复制声明文件到 ${targetDir}/ 失败: ${copyError instanceof Error ? copyError.message : String(copyError)}`)
             }
           }
-        } catch (error) {
-          logger.warn(`⚠️  生成声明文件失败: ${error instanceof Error ? error.message : String(error)}`)
+        } else {
+          logger.warn(`⚠️  生成声明文件到 ${primaryDir}/ 时出现错误`)
+          if (dtsResult.errors && dtsResult.errors.length > 0) {
+            dtsResult.errors.forEach(err => logger.error(err))
+          }
         }
+      } catch (error) {
+        logger.warn(`⚠️  生成声明文件失败: ${error instanceof Error ? error.message : String(error)}`)
       }
 
       timings['类型声明'] = Date.now() - phaseStart

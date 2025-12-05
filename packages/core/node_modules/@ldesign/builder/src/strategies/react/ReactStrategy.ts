@@ -60,15 +60,10 @@ export class ReactStrategy extends BaseStrategy implements ILibraryStrategy {
     plugins.push({
       name: 'typescript',
       plugin: async () => ts.default({
-        tsconfig: 'tsconfig.json',
-        declaration: true,
-        // declarationDir 将由 RollupAdapter 动态设置
-        jsx: 'react-jsx'
+        tsconfig: 'tsconfig.json'
       } as any),
       options: {
-        tsconfig: 'tsconfig.json',
-        declaration: true,
-        jsx: 'react-jsx'
+        tsconfig: 'tsconfig.json'
       }
     })
 
@@ -89,17 +84,21 @@ export class ReactStrategy extends BaseStrategy implements ILibraryStrategy {
     return plugins
   }
 
-  protected override buildOutputConfig(config: BuilderConfig): any {
-    const out = config.output || {}
-
-    // 如果使用格式特定配置（output.esm, output.cjs, output.umd），直接返回
-    if (out.esm || out.cjs || out.umd) {
-      return out
+  /**
+   * 获取 React 框架的全局变量映射
+   */
+  protected override getFrameworkGlobals(): Record<string, string> {
+    return {
+      react: 'React',
+      'react-dom': 'ReactDOM'
     }
+  }
 
-    // 否则使用传统的 format 数组配置
-    const formats = Array.isArray(out.format) ? out.format : ['esm', 'cjs']
-    return { dir: out.dir || 'dist', format: formats, sourcemap: out.sourcemap !== false, exports: 'auto' }
+  /**
+   * 获取默认外部依赖
+   */
+  protected override getDefaultExternal(): (string | RegExp)[] {
+    return ['react', 'react-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime']
   }
 
   protected override createWarningHandler() {
@@ -124,7 +123,7 @@ export class ReactStrategy extends BaseStrategy implements ILibraryStrategy {
    * 合并 external 配置，确保 React 相关依赖被标记为外部
    */
   protected override mergeExternal(external: any): any {
-    const reactPkgs = ['react', 'react-dom']
+    const reactPkgs = this.getDefaultExternal() as string[]
 
     if (!external) return reactPkgs
 

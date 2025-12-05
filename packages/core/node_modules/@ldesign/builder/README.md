@@ -381,6 +381,54 @@ export default defineConfig(monorepoPackage({
 }))
 ```
 
+### 简化配置（推荐新手使用）
+
+为了让配置更简洁直观，Builder 支持以下简化配置字段：
+
+```typescript
+import { defineConfig } from '@ldesign/builder'
+
+export default defineConfig({
+  // ⭐ 简化入口配置
+  entry: 'src/index.ts',        // 等同于 input
+  
+  // ⭐ 简化输出配置
+  outDir: 'dist',               // 等同于 output.dir
+  formats: ['esm', 'cjs'],      // 等同于 output.format
+  
+  // ⭐ 构建目标
+  target: 'es2020',             // ES 版本: 'es2018', 'esnext', 'node16'
+  
+  // ⭐ 模块处理
+  preserveModules: true,        // 保持模块结构（bundleless）
+  splitting: true,              // 代码分割
+  treeshake: true,              // Tree Shaking
+  
+  // ⭐ JSX 配置
+  jsx: 'react',                 // 'react' | 'vue' | 'preserve'
+  jsxFactory: 'React.createElement',
+  jsxFragment: 'React.Fragment',
+  
+  // ⭐ 其他
+  shims: true,                  // ESM/CJS 互操作垫片
+  replace: {                    // 编译时常量替换
+    'process.env.NODE_ENV': '"production"',
+  },
+})
+```
+
+| 简化配置 | 对应的完整配置 | 说明 |
+|----------|----------------|------|
+| `entry` | `input` | 入口文件 |
+| `outDir` | `output.dir` | 输出目录 |
+| `formats` | `output.format` | 输出格式 |
+| `target` | `typescript.target` | 构建目标 |
+| `preserveModules` | `bundleless` | 保持模块结构 |
+| `splitting` | `optimization.splitChunks` | 代码分割 |
+| `treeshake` | `performance.treeshaking` | Tree Shaking |
+| `jsx` | `react.jsx` / `vueJsx` | JSX 处理 |
+| `replace` | `define` | 常量替换 |
+
 ---
 
 ## 🔧 CLI 命令

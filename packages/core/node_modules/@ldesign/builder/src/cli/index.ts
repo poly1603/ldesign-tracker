@@ -20,6 +20,7 @@ import { analyzeCommand } from './commands/analyze'
 import { cleanCommand } from './commands/clean'
 import { examplesCommand } from './commands/examples'
 import { registerLintConfigsCommand } from './commands/lint-configs'
+import { registerUICommand } from './commands/ui'
 import { logger, setLogLevel } from '../utils/logger'
 import { setupGlobalErrorHandling } from '../utils/error-handler'
 
@@ -61,12 +62,14 @@ function createCLI(): Command {
   // 全局选项
   program
     .option('-c, --config <path>', '指定配置文件路径')
-    .option('--bundler <bundler>', '指定打包核心 (rollup|rolldown)', 'rollup')
+    .option('--bundler <bundler>', '指定打包核心 (rollup|rolldown|esbuild|swc)', 'rollup')
     .option('--mode <mode>', '指定构建模式 (development|production)', 'production')
     .option('--log-level <level>', '设置日志级别 (silent|error|warn|info|debug|verbose)', 'info')
     .option('--no-colors', '禁用颜色输出')
     .option('--silent', '静默模式')
     .option('--debug', '启用调试模式')
+    .option('--force', '强制执行，忽略兼容性警告')
+    .option('--no-compat-check', '禁用打包引擎兼容性检查')
 
   // 注册命令
   program.addCommand(buildCommand)
@@ -76,6 +79,7 @@ function createCLI(): Command {
   program.addCommand(cleanCommand)
   program.addCommand(examplesCommand)
   registerLintConfigsCommand(program)
+  registerUICommand(program)
 
   // 处理全局选项
   program.hook('preAction', (thisCommand) => {

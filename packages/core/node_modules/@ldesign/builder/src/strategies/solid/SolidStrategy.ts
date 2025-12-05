@@ -115,6 +115,10 @@ export class SolidStrategy implements ILibraryStrategy {
 
   private buildOutputConfig(config: BuilderConfig): any {
     const out = config.output || {}
+    // 如果 output 本身是数组格式，直接返回
+    if (Array.isArray(out)) {
+      return out
+    }
     const formats = Array.isArray(out.format) ? out.format : ['esm', 'cjs']
     return { dir: out.dir || 'dist', format: formats, sourcemap: out.sourcemap !== false, exports: 'auto' }
   }

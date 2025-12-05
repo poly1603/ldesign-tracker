@@ -179,6 +179,17 @@ export class Vue2Strategy implements ILibraryStrategy {
   private buildOutputConfig(config: BuilderConfig): any {
     const outputConfig = config.output || {}
 
+    // 如果 output 本身是数组格式，直接返回（添加 Vue 全局变量）
+    if (Array.isArray(outputConfig)) {
+      return outputConfig.map(item => ({
+        ...item,
+        globals: {
+          vue: 'Vue',
+          ...(item as any).globals
+        }
+      }))
+    }
+
     // 如果使用格式特定配置
     if (outputConfig.es || outputConfig.esm || outputConfig.cjs || outputConfig.umd) {
       const result = { ...outputConfig }

@@ -60,28 +60,28 @@ export class ConfigValidator {
     try {
       // 基础验证
       this.validateBasicConfig(config, errors, warnings)
-      
+
       // 输入验证
       this.validateInput(config, errors, warnings)
-      
+
       // 输出验证
       this.validateOutput(config, errors, warnings)
-      
+
       // 打包器验证
       this.validateBundler(config, errors, warnings)
-      
+
       // 压缩配置验证
       this.validateMinifyConfig(config, errors, warnings)
-      
+
       // 外部依赖验证
       this.validateExternal(config, errors, warnings)
-      
+
       // 插件验证
       this.validatePlugins(config, errors, warnings)
-      
+
       // 性能配置验证
       this.validatePerformance(config, errors, warnings)
-      
+
       // 文件存在性验证
       if (this.options.checkFiles) {
         this.validateFileExistence(config, errors, warnings)
@@ -180,7 +180,7 @@ export class ConfigValidator {
     if (output.format) {
       const validFormats = ['esm', 'cjs', 'umd', 'iife']
       const formats = Array.isArray(output.format) ? output.format : [output.format]
-      
+
       formats.forEach(format => {
         if (!validFormats.includes(format)) {
           errors.push(`无效的输出格式: ${format}`)
@@ -218,7 +218,7 @@ export class ConfigValidator {
 
     if (typeof config.minify === 'object') {
       const minifyConfig = config.minify as MinifyOptions
-      
+
       if (minifyConfig.level && !['none', 'whitespace', 'basic', 'advanced'].includes(minifyConfig.level)) {
         errors.push(`无效的压缩级别: ${minifyConfig.level}`)
       }
@@ -380,6 +380,317 @@ export class ConfigValidator {
 
     return suggestions
   }
+
+  /**
+   * 验证打包引擎与项目类型的兼容性
+   * @param bundler 用户选择的打包引擎
+   * @param projectPath 项目路径
+   * @returns 兼容性检查结果
+   */
+  async validateBundlerCompatibility(
+    bundler: string,
+    projectPath: string
+  ): Promise<BundlerCompatibilityResult> {
+    const result: BundlerCompatibilityResult = {
+      compatible: true,
+      warnings: [],
+      suggestions: [],
+      detectedFeatures: []
+    }
+
+    try {
+      // 检测项目特征
+      const features = await this.detectProjectFeatures(projectPath)
+      result.detectedFeatures = features
+
+      // 检查 Vue SFC 兼容性
+      if (features.includes('vue-sfc')) {
+        if (bundler === 'esbuild' || bundler === 'swc') {
+          result.compatible = false
+          result.warnings.push(
+            `⚠️  检测到 Vue 单文件组件 (.vue)，${bundler} 不支持 Vue SFC 编译`
+          )
+          result.suggestions.push(
+            `💡 建议使用 rollup（功能最完整）或 rolldown（速度更快）`
+          )
+        } else if (bundler === 'rolldown') {
+          result.warnings.push(
+            `⚠️  检测到 Vue 单文件组件 (.vue)，rolldown 对 Vue SFC 支持有限`
+          )
+          result.suggestions.push(
+            `💡 如需完整 Vue 支持，建议使用 rollup`
+          )
+        }
+      }
+
+      // 检查 Svelte 兼容性
+      if (features.includes('svelte')) {
+        if (bundler === 'esbuild' || bundler === 'swc') {
+          result.compatible = false
+          result.warnings.push(
+            `⚠️  检测到 Svelte 组件 (.svelte)，${bundler} 不支持 Svelte 编译`
+          )
+          result.suggestions.push(
+            `💡 建议使用 rollup 并安装 @rollup/plugin-svelte`
+          )
+        } else if (bundler === 'rolldown') {
+          result.warnings.push(
+            `⚠️  检测到 Svelte 组件，rolldown 对 Svelte 支持有限`
+          )
+          result.suggestions.push(
+            `💡 如需完整 Svelte 支持，建议使用 rollup`
+          )
+        }
+      }
+
+      // 检查样式文件兼容性
+      if (features.includes('less') || features.includes('scss') || features.includes('sass')) {
+        const styleType = features.includes('less') ? 'Less' : 'SCSS/Sass'
+
+        if (bundler === 'swc') {
+          result.warnings.push(
+            `⚠️  检测到 ${styleType} 样式文件，swc 不支持样式预处理`
+          )
+          result.suggestions.push(
+            `💡 建议使用 rollup（完整支持）或 rolldown（基础支持）`
+          )
+        } else if (bundler === 'esbuild') {
+          result.warnings.push(
+            `⚠️  检测到 ${styleType} 样式文件，esbuild 对样式预处理支持有限`
+          )
+          result.suggestions.push(
+            `💡 可能需要额外配置或使用 rollup 获得完整支持`
+          )
+        }
+      }
+
+      // 检查字体文件兼容性
+      if (features.includes('fonts')) {
+        if (bundler === 'esbuild') {
+          result.warnings.push(
+            `⚠️  检测到字体文件，esbuild 可能无法正确处理 CSS 中的字体引用`
+          )
+          result.suggestions.push(
+            `💡 建议使用 rollup 或确保字体文件路径正确配置`
+          )
+        }
+      }
+
+      // 检查 JSX/TSX 兼容性
+      if (features.includes('jsx') || features.includes('tsx')) {
+        // 所有引擎都支持 JSX，但给出最佳建议
+        if (bundler === 'rolldown' && features.includes('react')) {
+          result.suggestions.push(
+            `💡 React 项目使用 rolldown 构建速度更快`
+          )
+        }
+      }
+
+      // 检查装饰器兼容性
+      if (features.includes('decorators')) {
+        if (bundler === 'esbuild') {
+          result.warnings.push(
+            `⚠️  检测到 TypeScript 装饰器，esbuild 对装饰器支持有限`
+          )
+          result.suggestions.push(
+            `💡 如使用实验性装饰器，建议使用 rollup 或 swc`
+          )
+        }
+      }
+
+    } catch (error) {
+      this.logger.debug(`项目特征检测失败: ${(error as Error).message}`)
+    }
+
+    return result
+  }
+
+  /**
+   * 检测项目特征
+   */
+  private async detectProjectFeatures(projectPath: string): Promise<string[]> {
+    const features: string[] = []
+    const srcPath = path.join(projectPath, 'src')
+    const checkPath = fs.existsSync(srcPath) ? srcPath : projectPath
+
+    try {
+      // 递归检查文件
+      const files = this.getAllFiles(checkPath)
+
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase()
+        const content = ext === '.json' ? '' : this.safeReadFile(file)
+
+        // Vue SFC
+        if (ext === '.vue') {
+          if (!features.includes('vue-sfc')) features.push('vue-sfc')
+        }
+
+        // Svelte
+        if (ext === '.svelte') {
+          if (!features.includes('svelte')) features.push('svelte')
+        }
+
+        // Less
+        if (ext === '.less') {
+          if (!features.includes('less')) features.push('less')
+        }
+
+        // SCSS/Sass
+        if (ext === '.scss' || ext === '.sass') {
+          if (!features.includes('scss')) features.push('scss')
+        }
+
+        // JSX/TSX
+        if (ext === '.jsx') {
+          if (!features.includes('jsx')) features.push('jsx')
+        }
+        if (ext === '.tsx') {
+          if (!features.includes('tsx')) features.push('tsx')
+        }
+
+        // 字体文件
+        if (['.woff', '.woff2', '.ttf', '.eot', '.otf'].includes(ext)) {
+          if (!features.includes('fonts')) features.push('fonts')
+        }
+
+        // 检查装饰器使用
+        if ((ext === '.ts' || ext === '.tsx') && content) {
+          if (content.includes('@customElement') ||
+            content.includes('@property') ||
+            content.includes('@Component') ||
+            content.includes('@Injectable')) {
+            if (!features.includes('decorators')) features.push('decorators')
+          }
+        }
+      }
+
+      // 检查 package.json 依赖
+      const pkgPath = path.join(projectPath, 'package.json')
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'))
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies }
+
+        if (allDeps['vue'] || allDeps['@vue/runtime-core']) {
+          if (!features.includes('vue')) features.push('vue')
+        }
+        if (allDeps['react'] || allDeps['react-dom']) {
+          if (!features.includes('react')) features.push('react')
+        }
+        if (allDeps['svelte']) {
+          if (!features.includes('svelte')) features.push('svelte')
+        }
+        if (allDeps['solid-js']) {
+          if (!features.includes('solid')) features.push('solid')
+        }
+        if (allDeps['lit']) {
+          if (!features.includes('lit')) features.push('lit')
+        }
+        if (allDeps['preact']) {
+          if (!features.includes('preact')) features.push('preact')
+        }
+      }
+
+    } catch (error) {
+      this.logger.debug(`特征检测错误: ${(error as Error).message}`)
+    }
+
+    return features
+  }
+
+  /**
+   * 获取目录下所有文件
+   */
+  private getAllFiles(dir: string, maxDepth = 5): string[] {
+    const files: string[] = []
+
+    const walk = (currentDir: string, depth: number) => {
+      if (depth > maxDepth) return
+      if (!fs.existsSync(currentDir)) return
+
+      try {
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true })
+
+        for (const entry of entries) {
+          // 跳过 node_modules 和隐藏目录
+          if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+
+          const fullPath = path.join(currentDir, entry.name)
+
+          if (entry.isDirectory()) {
+            walk(fullPath, depth + 1)
+          } else if (entry.isFile()) {
+            files.push(fullPath)
+          }
+        }
+      } catch {
+        // 忽略权限错误
+      }
+    }
+
+    walk(dir, 0)
+    return files
+  }
+
+  /**
+   * 安全读取文件内容
+   */
+  private safeReadFile(filePath: string): string {
+    try {
+      // 只读取小文件
+      const stats = fs.statSync(filePath)
+      if (stats.size > 100 * 1024) return '' // 跳过大于 100KB 的文件
+      return fs.readFileSync(filePath, 'utf-8')
+    } catch {
+      return ''
+    }
+  }
+
+  /**
+   * 显示兼容性警告和建议
+   */
+  printCompatibilityWarnings(result: BundlerCompatibilityResult, logger: Logger): void {
+    if (result.warnings.length > 0) {
+      logger.warn('')
+      logger.warn('╭─────────────────────────────────────────────────────╮')
+      logger.warn('│  🔍 打包引擎兼容性检查                               │')
+      logger.warn('├─────────────────────────────────────────────────────┤')
+
+      for (const warning of result.warnings) {
+        logger.warn(`│  ${warning.padEnd(51)}│`)
+      }
+
+      if (result.suggestions.length > 0) {
+        logger.warn('├─────────────────────────────────────────────────────┤')
+        for (const suggestion of result.suggestions) {
+          logger.warn(`│  ${suggestion.padEnd(51)}│`)
+        }
+      }
+
+      logger.warn('╰─────────────────────────────────────────────────────╯')
+      logger.warn('')
+
+      if (!result.compatible) {
+        logger.error('❌ 检测到不兼容的配置，构建可能失败或产出不正确')
+        logger.info('💡 您可以使用 --bundler rollup 切换到完整支持的打包引擎')
+        logger.warn('')
+      }
+    }
+  }
+}
+
+/**
+ * 打包引擎兼容性检查结果
+ */
+export interface BundlerCompatibilityResult {
+  /** 是否兼容 */
+  compatible: boolean
+  /** 警告信息 */
+  warnings: string[]
+  /** 建议 */
+  suggestions: string[]
+  /** 检测到的项目特征 */
+  detectedFeatures: string[]
 }
 
 /**

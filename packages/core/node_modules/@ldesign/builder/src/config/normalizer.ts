@@ -19,26 +19,50 @@ import { Logger } from '../utils/logger'
 
 /**
  * 兼容性配置接口
- * 支持旧版配置格式
+ * 支持旧版配置格式和简化配置
  */
 export interface LegacyConfig extends Partial<BuilderConfig> {
-  /** 入口文件（旧版使用 entry，新版使用 input） */
+  /** 入口文件（简化配置，等同于 input） */
   entry?: string | string[] | Record<string, string>
 
-  /** 输出格式（旧版使用 formats，新版使用 output.format） */
-  formats?: OutputFormat[]
+  /** 输出格式（简化配置，等同于 output.format） */
+  formats?: ('esm' | 'cjs' | 'umd' | 'iife')[]
 
-  /** 输出目录（旧版使用 outDir，新版使用 output.dir） */
+  /** 输出目录（简化配置，等同于 output.dir） */
   outDir?: string
 
   /** 根目录（旧版配置） */
   root?: string
 
-  /** 目标环境（旧版配置） */
-  target?: string
+  /** 构建目标（简化配置） */
+  target?: string | string[]
 
   /** CSS 配置（旧版配置） */
   css?: boolean | object
+
+  /** 保持模块结构（简化配置，等同于 bundleless） */
+  preserveModules?: boolean
+
+  /** 代码分割（简化配置） */
+  splitting?: boolean
+
+  /** Tree Shaking（简化配置） */
+  treeshake?: boolean | object
+
+  /** JSX 处理模式（简化配置） */
+  jsx?: 'react' | 'vue' | 'preserve' | 'react-jsx' | 'react-jsxdev'
+
+  /** JSX 工厂函数（简化配置） */
+  jsxFactory?: string
+
+  /** JSX Fragment（简化配置） */
+  jsxFragment?: string
+
+  /** ESM/CJS 互操作垫片（简化配置） */
+  shims?: boolean
+
+  /** 替换配置（简化配置） */
+  replace?: Record<string, string>
 }
 
 /**
@@ -85,8 +109,16 @@ export class ConfigNormalizer {
   normalize(config: LegacyConfig): NormalizationResult {
     this.warnings = []
 
+    // 解构出简化配置字段，剩余部分作为标准配置
+    const {
+      entry, formats, outDir, root, css,
+      preserveModules, splitting, treeshake,
+      jsx, jsxFactory, jsxFragment, shims, replace,
+      ...rest
+    } = config as LegacyConfig & Record<string, any>
+
     const normalized: BuilderConfig = {
-      ...config,
+      ...rest,
     }
 
     // 1. 规范化入口配置 (entry -> input)
@@ -103,6 +135,9 @@ export class ConfigNormalizer {
 
     // 5. 规范化其他旧版字段
     this.normalizeLegacyFields(config, normalized)
+
+    // 6. 规范化简化配置字段
+    this.normalizeSimplifiedFields(config, normalized)
 
     // 清理已处理的旧版字段
     this.cleanupLegacyFields(normalized as LegacyConfig)
@@ -267,6 +302,63 @@ export class ConfigNormalizer {
   }
 
   /**
+   * 规范化简化配置字段
+   * 将简化配置转换为标准配置
+   */
+  private normalizeSimplifiedFields(config: LegacyConfig, normalized: BuilderConfig): void {
+    // preserveModules -> bundleless
+    if (config.preserveModules !== undefined && normalized.bundleless === undefined) {
+      normalized.bundleless = config.preserveModules
+    }
+
+    // splitting -> optimization.splitChunks
+    if (config.splitting !== undefined) {
+      normalized.optimization = normalized.optimization || {}
+      normalized.optimization.splitChunks = config.splitting
+    }
+
+    // treeshake -> performance.treeshaking
+    if (config.treeshake !== undefined) {
+      normalized.performance = normalized.performance || {}
+      if (typeof config.treeshake === 'boolean') {
+        normalized.performance.treeshaking = config.treeshake
+      } else {
+        normalized.performance.treeshaking = true
+      }
+    }
+
+    // jsx/jsxFactory/jsxFragment -> react 或 vueJsx 配置
+    if (config.jsx) {
+      if (config.jsx === 'vue') {
+        normalized.vueJsx = normalized.vueJsx || {}
+        if (config.jsxFactory) normalized.vueJsx.factory = config.jsxFactory
+        if (config.jsxFragment) normalized.vueJsx.fragment = config.jsxFragment
+      } else {
+        normalized.react = normalized.react || {}
+        if (config.jsx === 'react-jsx' || config.jsx === 'react-jsxdev') {
+          normalized.react.jsx = 'automatic'
+        } else if (config.jsx === 'react') {
+          normalized.react.jsx = 'classic'
+        }
+      }
+    }
+
+    // replace -> define
+    if (config.replace) {
+      normalized.define = {
+        ...normalized.define,
+        ...config.replace,
+      }
+    }
+
+    // shims 暂存，后续处理
+    if (config.shims !== undefined) {
+      // TODO: 在适配器层处理 shims
+      (normalized as any)._shims = config.shims
+    }
+  }
+
+  /**
    * 清理已处理的旧版字段
    */
   private cleanupLegacyFields(config: LegacyConfig): void {
@@ -276,6 +368,14 @@ export class ConfigNormalizer {
     delete config.root
     delete config.target
     delete config.css
+    delete config.preserveModules
+    delete config.splitting
+    delete config.treeshake
+    delete config.jsx
+    delete config.jsxFactory
+    delete config.jsxFragment
+    delete config.shims
+    delete config.replace
   }
 
   /**

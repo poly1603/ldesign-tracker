@@ -16,11 +16,12 @@ import { LibraryType } from '../../types/library'
 import type { BuilderConfig } from '../../types/config'
 import type { UnifiedConfig } from '../../types/adapter'
 import { shouldMinify } from '../../utils/optimization/MinifyProcessor'
+import { BaseStrategy } from '../base/BaseStrategy'
 
 /**
  * TypeScript 库构建策略
  */
-export class TypeScriptStrategy implements ILibraryStrategy {
+export class TypeScriptStrategy extends BaseStrategy implements ILibraryStrategy {
   readonly name = 'typescript'
   readonly supportedTypes: LibraryType[] = [LibraryType.TYPESCRIPT]
   readonly priority = 10
@@ -28,43 +29,30 @@ export class TypeScriptStrategy implements ILibraryStrategy {
   /**
    * 应用 TypeScript 策略
    */
-  async applyStrategy(config: BuilderConfig): Promise<UnifiedConfig> {
-    const outputConfig = this.buildOutputConfig(config)
+  override async applyStrategy(config: BuilderConfig): Promise<UnifiedConfig> {
+    // 使用基类的入口解析方法
+    const resolvedInput = await this.resolveInputEntriesEnhanced(config)
 
-    // 计算入口：若用户未指定，则默认将 src 目录下的所有源码文件作为多入口
-    const resolvedInput = await this.resolveInputEntries(config)
-
-    // 创建基础配置，保留重要的原始配置属性
-    const unifiedConfig: UnifiedConfig = {
+    return {
       input: resolvedInput,
-      output: outputConfig,
+      output: this.buildOutputConfig(config),
       plugins: this.buildPlugins(config),
       external: config.external || [],
       treeshake: config.performance?.treeshaking !== false,
-      onwarn: this.createWarningHandler(),
-      // 保留重要的构建选项
-      clean: (config as any).clean,
-      minify: config.performance?.minify,
-      sourcemap: config.output?.sourcemap,
-      // 保留其他可能的配置属性
-      ...(config as any)
+      onwarn: (warning: any) => {
+        // 忽略常见的无害警告
+        if (warning.code === 'THIS_IS_UNDEFINED' || warning.code === 'CIRCULAR_DEPENDENCY') return
+      },
+      clean: config.clean,
+      minify: config.performance?.minify as boolean | undefined,
+      sourcemap: config.output?.sourcemap
     }
-
-    // 覆盖特定的属性以确保正确性
-    unifiedConfig.input = resolvedInput
-    unifiedConfig.output = outputConfig
-    unifiedConfig.plugins = this.buildPlugins(config)
-    unifiedConfig.external = config.external || []
-    unifiedConfig.treeshake = config.performance?.treeshaking !== false
-    unifiedConfig.onwarn = this.createWarningHandler()
-
-    return unifiedConfig
   }
 
   /**
    * 检查策略是否适用
    */
-  isApplicable(config: BuilderConfig): boolean {
+  override isApplicable(config: BuilderConfig): boolean {
     return config.libraryType === LibraryType.TYPESCRIPT
   }
 
@@ -99,98 +87,9 @@ export class TypeScriptStrategy implements ILibraryStrategy {
   }
 
   /**
-   * 解析入口配置
-   * - 若用户未传入 input，则将 src 下所有源文件作为入口（排除测试与声明文件）
-   * - 若用户传入 glob 模式的数组，则解析为多入口
-   * - 若用户传入单个文件或对象，则直接返回
-   */
-  private async resolveInputEntries(config: BuilderConfig): Promise<string | string[] | Record<string, string>> {
-    // 如果没有提供input，自动扫描src目录
-    if (!config.input) {
-      return this.autoDiscoverEntries()
-    }
-
-    // 如果是字符串数组且包含glob模式，解析为多入口
-    if (Array.isArray(config.input)) {
-      return this.resolveGlobEntries(config.input)
-    }
-
-    // 其他情况直接返回用户配置
-    return config.input
-  }
-
-  /**
-   * 自动发现入口文件
-   */
-  private async autoDiscoverEntries(): Promise<string | Record<string, string>> {
-    const { findFiles } = await import('../../utils/file-system')
-    const { relative, extname } = await import('path')
-
-    const files = await findFiles([
-      'src/**/*.{ts,tsx,js,jsx}'
-    ], {
-      cwd: process.cwd(),
-      ignore: ['**/*.d.ts', '**/*.test.*', '**/*.spec.*', '**/__tests__/**']
-    })
-
-    if (files.length === 0) return 'src/index.ts'
-
-    const entryMap: Record<string, string> = {}
-    for (const abs of files) {
-      const rel = relative(process.cwd(), abs)
-      const relFromSrc = rel.replace(/^src[\\/]/, '')
-      const noExt = relFromSrc.slice(0, relFromSrc.length - extname(relFromSrc).length)
-      const key = noExt.replace(/\\/g, '/')
-      entryMap[key] = abs
-    }
-    return entryMap
-  }
-
-  /**
-   * 解析glob模式的入口配置
-   */
-  private async resolveGlobEntries(patterns: string[]): Promise<Record<string, string>> {
-    const { findFiles } = await import('../../utils/file-system')
-    const { relative, extname } = await import('path')
-
-    const files = await findFiles(patterns, {
-      cwd: process.cwd(),
-      ignore: ['**/*.d.ts', '**/*.test.*', '**/*.spec.*', '**/__tests__/**']
-    })
-
-    if (files.length === 0) {
-      throw new Error(`No files found matching patterns: ${patterns.join(', ')}`)
-    }
-
-    const entryMap: Record<string, string> = {}
-    for (const abs of files) {
-      const rel = relative(process.cwd(), abs)
-      const relFromSrc = rel.replace(/^src[\\/]/, '')
-      const noExt = relFromSrc.slice(0, relFromSrc.length - extname(relFromSrc).length)
-      const key = noExt.replace(/\\/g, '/')
-      entryMap[key] = abs
-    }
-    return entryMap
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /**
    * 获取推荐插件
    */
-  getRecommendedPlugins(config: BuilderConfig): any[] {
+  override getRecommendedPlugins(config: BuilderConfig): any[] {
     const plugins = []
 
     // TypeScript 插件
@@ -258,7 +157,7 @@ export class TypeScriptStrategy implements ILibraryStrategy {
   /**
    * 验证配置
    */
-  validateConfig(config: BuilderConfig): any {
+  override validateConfig(config: BuilderConfig): any {
     const errors: string[] = []
     const warnings: string[] = []
     const suggestions: string[] = []
@@ -290,40 +189,7 @@ export class TypeScriptStrategy implements ILibraryStrategy {
     }
   }
 
-  /**
-   * 构建输出配置
-   */
-  private buildOutputConfig(config: BuilderConfig): any {
-    const oc: any = config.output || {}
-
-    // 若显式使用了 esm/cjs/umd 字段（boolean 或对象），优先走格式化分支
-    const hasPerFormat = typeof oc.esm !== 'undefined' || typeof oc.cjs !== 'undefined' || typeof oc.umd !== 'undefined'
-
-    const result: any = {}
-
-    // 继承顶层 sourcemap（可被子格式覆盖）
-    if (typeof oc.sourcemap !== 'undefined') {
-      result.sourcemap = oc.sourcemap
-    } else if (typeof (config as any).sourcemap !== 'undefined') {
-      result.sourcemap = (config as any).sourcemap
-    }
-
-    // 继承公共 name/globals（供 UMD 使用）
-    if (oc.name) result.name = oc.name
-    if (oc.globals) result.globals = oc.globals
-
-    if (hasPerFormat) {
-      if (typeof oc.esm !== 'undefined') result.esm = oc.esm
-      if (typeof oc.cjs !== 'undefined') result.cjs = oc.cjs
-      if (typeof oc.umd !== 'undefined') result.umd = oc.umd
-    } else {
-      // 回退到 format 数组（向后兼容）
-      const formats = Array.isArray(oc.format) ? oc.format : ['esm', 'cjs']
-      result.format = formats
-    }
-
-    return result
-  }
+  // 使用 BaseStrategy.buildOutputConfig 处理输出配置
 
   /**
    * 构建插件配置
@@ -505,25 +371,5 @@ export class TypeScriptStrategy implements ILibraryStrategy {
     }
 
     return options
-  }
-
-
-
-  /**
-   * 创建警告处理器
-   */
-  private createWarningHandler() {
-    return (warning: any) => {
-      // 忽略一些常见的无害警告
-      if (warning.code === 'THIS_IS_UNDEFINED') {
-        return
-      }
-      if (warning.code === 'CIRCULAR_DEPENDENCY') {
-        return
-      }
-
-      // 静默处理，不输出警告
-      // 如需调试，可通过 logger.warn 输出
-    }
   }
 }

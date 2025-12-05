@@ -165,8 +165,21 @@ export class ConfigManager extends EventEmitter {
 
       // 输出配置验证
       if (config.output) {
-        if (!config.output.dir && !config.output.file) {
-          result.errors.push('输出配置必须指定 dir 或 file')
+        // 数组格式: 验证每个输出项都有 dir
+        if (Array.isArray(config.output)) {
+          for (const item of config.output) {
+            if (!item.dir && !item.file) {
+              result.errors.push('数组格式的输出配置中每一项必须指定 dir 或 file')
+              break
+            }
+          }
+        }
+        // 对象格式: 验证有 dir/file 或者有子配置 (es/esm/cjs/umd)
+        else if (!config.output.dir && !config.output.file) {
+          const hasSubConfig = config.output.es || config.output.esm || config.output.cjs || config.output.umd
+          if (!hasSubConfig) {
+            result.errors.push('输出配置必须指定 dir 或 file，或者使用 es/esm/cjs/umd 子配置')
+          }
         }
       }
 
@@ -285,6 +298,12 @@ export class ConfigManager extends EventEmitter {
    * 智能合并 output 配置
    */
   private mergeOutputConfig(base: any, override: any): any {
+    // 如果 override 是数组格式，直接使用用户配置
+    // 数组格式表示用户明确指定了输出配置，不应该与默认配置合并
+    if (Array.isArray(override)) {
+      return override
+    }
+
     const result = { ...base }
 
     // 合并顶层配置

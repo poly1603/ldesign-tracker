@@ -145,6 +145,12 @@ export class MixedStrategy implements ILibraryStrategy {
    */
   private buildOutputConfig(config: BuilderConfig): any {
     const outputConfig = config.output || {}
+
+    // 如果 output 本身是数组格式，直接返回
+    if (Array.isArray(outputConfig)) {
+      return outputConfig
+    }
+
     const formats = Array.isArray(outputConfig.format)
       ? outputConfig.format
       : [outputConfig.format || 'esm']

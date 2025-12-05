@@ -43,6 +43,15 @@ export class Vue3Strategy extends BaseStrategy implements ILibraryStrategy {
   }
 
   /**
+   * 获取 Vue 3 框架的全局变量映射
+   */
+  protected override getFrameworkGlobals(): Record<string, string> {
+    return {
+      vue: 'Vue'
+    }
+  }
+
+  /**
    * 应用 Vue 3 策略
    */
   override async applyStrategy(config: BuilderConfig): Promise<UnifiedConfig> {

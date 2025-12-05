@@ -59,18 +59,28 @@ export class MixedFrameworkAdapter implements ILibraryStrategy {
       : []
 
     const outputOptions = enhancedOptions.output || {}
-    const baseOutput = Array.isArray(outputOptions) ? outputOptions[0] : outputOptions
 
-    return {
-      input: enhancedOptions.input as string | string[] | Record<string, string>,
-      output: {
+    // 保留数组格式的输出配置
+    let outputConfig: any
+    if (Array.isArray(outputOptions)) {
+      // 如果是数组格式，保留所有输出配置
+      outputConfig = outputOptions
+    } else {
+      // 单一输出格式
+      const baseOutput = outputOptions
+      outputConfig = {
         dir: (baseOutput as any).dir || 'dist',
         format: (baseOutput as any).format || 'es',
         fileName: '[name].js',
         sourcemap: (baseOutput as any).sourcemap,
         chunkFileNames: '[name]-[hash].js',
         assetFileNames: '[name][extname]'
-      } as any,
+      }
+    }
+
+    return {
+      input: enhancedOptions.input as string | string[] | Record<string, string>,
+      output: outputConfig,
       external: normalizedExternal,
       plugins: normalizedPlugins,
       // 其他必要的配置

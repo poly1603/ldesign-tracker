@@ -121,56 +121,23 @@ export class RollupPluginManager {
     }
 
     // 清理不支持的字段
-    const { outDir: _outDir, composite: _composite, incremental: _incremental, noEmit: _noEmit, tsconfigOverride: _ignored, ...cleanedCO } = compilerOpts as any
+    const { outDir: _outDir, composite: _composite, incremental: _incremental, noEmit: _noEmit, tsconfigOverride: _ignored, tsconfig: _tsconfig, ...cleanedCO } = compilerOpts as any
 
-    const basePlugin = typescript.default({
+    // 提取 tsconfig 路径
+    const tsconfigPath = (originalOptions as any).tsconfig
+
+    // 如果提供了 tsconfig，尽量使用 tsconfig 的配置，只覆盖必要的选项
+    const finalTsOptions: any = {
       ...otherOpts,
-      // 完全禁用 tsconfig 读取，只使用 compilerOptions
-      tsconfig: false,
-      compilerOptions: {
-        ...cleanedCO,
-        declaration: emitDts,
-        declarationMap: false,
-        declarationDir: emitDts ? outputDir : undefined,
-        outDir: undefined,
-        // 禁用 composite 和 incremental，因为 Rollup 不需要这些
-        composite: false,
-        incremental: false,
-        rootDir: cleanedCO?.rootDir ?? 'src',
-        skipLibCheck: true,
-        isolatedModules: !emitDts,
-        // 禁用诊断输出
-        noEmit: false,
-        // 抑制所有错误（只在构建失败时才会报错）
-        noUnusedLocals: false,
-        noUnusedParameters: false
-      },
-      // 自定义过滤诊断
-      filterDiagnostics: (diagnostic: any) => {
-        const code = diagnostic.code
-        const file = diagnostic.file?.fileName || ''
+      tsconfig: tsconfigPath || false,
+      // 仅在需要时覆盖声明相关选项
+      declaration: emitDts,
+      declarationMap: false,
+      declarationDir: emitDts ? outputDir : undefined,
+      noEmit: false // 必须为 false 才能生成输出
+    }
 
-        // 过滤 .vue 文件相关的诊断
-        if (file.endsWith('.vue') || file.includes('.vue')) {
-          return false
-        }
-
-        // 过滤特定的诊断代码
-        const suppressedCodes = [
-          2688,  // TS2688: Cannot find type definition file
-          2307,  // TS2307: Cannot find module
-          5096,  // TS5096: Option conflicts
-          6133   // TS6133: Unused variable
-        ]
-
-        if (suppressedCodes.includes(code)) {
-          return false
-        }
-
-        // 保留其他诊断
-        return true
-      }
-    })
+    const basePlugin = typescript.default(finalTsOptions)
 
     // 包装插件以过滤 TypeScript 警告
     const wrappedPlugin = wrapTypeScriptPlugin(basePlugin)

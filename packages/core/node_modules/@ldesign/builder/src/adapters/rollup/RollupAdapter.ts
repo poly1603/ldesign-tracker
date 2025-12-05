@@ -435,17 +435,45 @@ export class RollupAdapter implements IBundlerAdapter {
 
     // 转换输出配置
     if (config.output) {
-      const outputConfig = config.output as any
+      let outputConfig = config.output as any
+
+      // 处理数组格式的输出配置，转换为 TDesign 风格对象格式
+      // 例如: [{ format: 'esm', dir: 'es' }, { format: 'esm', dir: 'esm' }]
+      // 转换为: { es: { dir: 'es' }, esm: { dir: 'esm' }, lib: { dir: 'lib' }, dist: { dir: 'dist' } }
+      if (Array.isArray(outputConfig)) {
+        this.logger.debug('检测到数组格式输出配置，转换为 TDesign 风格')
+        const converted: any = {}
+
+        for (const item of outputConfig) {
+          const format = item.format
+          const dir = item.dir
+
+          // 使用目录名作为键（支持 es、esm、lib、dist 等）
+          // 这样可以确保每个目录都有独立的配置
+          const configKey = dir || format || 'es'
+
+          converted[configKey] = {
+            ...item,
+            dir: dir || configKey,
+            preserveStructure: item.preserveModules ?? item.preserveStructure
+          }
+
+          this.logger.debug(`转换输出配置: format=${format}, dir=${dir} -> key=${configKey}`)
+        }
+
+        outputConfig = converted
+        this.logger.debug(`转换后的配置键: ${Object.keys(converted).join(', ')}`)
+      }
 
       // 优先处理对象化的输出配置（output.es / output.esm / output.cjs / output.umd）
-      this.logger.info(`[DEBUG] outputConfig keys: ${Object.keys(outputConfig).join(', ')}`)
-      this.logger.info(`[DEBUG] outputConfig.es: ${JSON.stringify(outputConfig.es)}`)
-      this.logger.info(`[DEBUG] outputConfig.esm: ${JSON.stringify(outputConfig.esm)}`)
-      this.logger.info(`[DEBUG] outputConfig.cjs: ${JSON.stringify(outputConfig.cjs)}`)
-      this.logger.info(`[DEBUG] outputConfig.umd: ${JSON.stringify(outputConfig.umd)}`)
+      this.logger.debug(`输出配置键: ${Object.keys(outputConfig).join(', ')}`)
+      this.logger.debug(`outputConfig.es: ${JSON.stringify(outputConfig.es)}`)
+      this.logger.debug(`outputConfig.esm: ${JSON.stringify(outputConfig.esm)}`)
+      this.logger.debug(`outputConfig.cjs: ${JSON.stringify(outputConfig.cjs)}`)
+      this.logger.debug(`outputConfig.umd: ${JSON.stringify(outputConfig.umd)}`)
 
-      if (outputConfig.es || outputConfig.esm || outputConfig.cjs || outputConfig.umd) {
-        this.logger.info('[DEBUG] 进入 TDesign 风格配置分支')
+      if (outputConfig.es || outputConfig.esm || outputConfig.cjs || outputConfig.lib || outputConfig.umd || outputConfig.dist) {
+        this.logger.debug('进入 TDesign 风格配置分支')
         const configs: RollupOptions[] = []
 
         // 处理 ES 配置 (TDesign 风格: .mjs + 编译后的 CSS)
@@ -522,9 +550,11 @@ export class RollupAdapter implements IBundlerAdapter {
         }
 
         // 处理 CJS 配置 (TDesign 风格: .js + 忽略样式)
-        if (outputConfig.cjs && outputConfig.cjs !== false) {
-          const cjsConfig = outputConfig.cjs === true ? {} : outputConfig.cjs
-          const cjsDir = cjsConfig.dir || 'cjs'  // 默认目录改为 'cjs'
+        // 支持 cjs 和 lib 作为键名
+        const cjsOutputConfig = outputConfig.cjs || outputConfig.lib
+        if (cjsOutputConfig && cjsOutputConfig !== false) {
+          const cjsConfig = cjsOutputConfig === true ? {} : cjsOutputConfig
+          const cjsDir = cjsConfig.dir || 'lib'  // 默认目录改为 'lib'
           // CJS 格式也生成 DTS 文件
           const cjsPlugins = await this.pluginManager.transformPluginsForFormat(config.plugins || [], cjsDir, { emitDts: true })
           const cjsInput = cjsConfig.input
@@ -557,8 +587,11 @@ export class RollupAdapter implements IBundlerAdapter {
           })
         }
 
-        if (outputConfig.umd || (config as any).umd) {
-          const umdCfg = await this.createUMDConfig(config, filteredInput)
+        // 处理 UMD 配置
+        // 支持 umd 和 dist 作为键名
+        const umdOutputConfig = outputConfig.umd || outputConfig.dist || (config as any).umd
+        if (umdOutputConfig && umdOutputConfig !== false) {
+          const umdCfg = await this.createUMDConfig(config, filteredInput, umdOutputConfig)
           // umdCfg 现在可能是数组（包含常规版本和压缩版本）
           if (Array.isArray(umdCfg)) {
             configs.push(...umdCfg)
@@ -980,10 +1013,15 @@ export class RollupAdapter implements IBundlerAdapter {
    *
    * 此方法现在委托给 RollupUMDBuilder 处理
    */
-  private async createUMDConfig(config: UnifiedConfig, filteredInput?: string | string[] | Record<string, string>): Promise<any[]> {
+  private async createUMDConfig(
+    config: UnifiedConfig,
+    filteredInput?: string | string[] | Record<string, string>,
+    umdOutputConfig?: any
+  ): Promise<any[]> {
     // 获取基础插件和用户插件
     const basePlugins = await this.getBasePlugins(config)
-    const umdSection = (config as any).umd || (config as any).output?.umd || {}
+    // 优先使用传入的 umdOutputConfig，其次使用 config.umd 或 config.output.umd
+    const umdSection = umdOutputConfig || (config as any).umd || (config as any).output?.umd || {}
     const userPlugins = await this.pluginManager.transformPluginsForFormat(
       config.plugins || [],
       (umdSection.dir || 'dist'),
@@ -997,8 +1035,12 @@ export class RollupAdapter implements IBundlerAdapter {
     } catch { }
 
     // 委托给 RollupUMDBuilder 处理
+    // 如果有 umdOutputConfig，将其合并到 config 中以便 umdBuilder 使用
+    const configWithUmd = umdOutputConfig
+      ? { ...config, umd: { ...(config as any).umd, ...umdSection } }
+      : config
     return await this.umdBuilder.createUMDConfig(
-      config,
+      configWithUmd,
       filteredInput,
       basePlugins,
       userPlugins,

@@ -598,8 +598,18 @@ export class MixedFrameworkStrategy implements BuildStrategy {
   private createUnifiedOutput(
     baseOutput?: OutputOptions | OutputOptions[]
   ): OutputOptions | OutputOptions[] {
-    const output = Array.isArray(baseOutput) ? baseOutput[0] : baseOutput || {}
+    // 如果是数组格式，保留所有输出配置
+    if (Array.isArray(baseOutput) && baseOutput.length > 0) {
+      return baseOutput.map(output => ({
+        ...output,
+        dir: output.dir || 'dist',
+        format: output.format || 'es',
+        chunkFileNames: output.chunkFileNames || '[name]-[hash].js',
+        manualChunks: this.createManualChunks.bind(this)
+      }))
+    }
 
+    const output = (baseOutput || {}) as OutputOptions
     return {
       ...output,
       dir: output.dir || 'dist',
@@ -615,13 +625,28 @@ export class MixedFrameworkStrategy implements BuildStrategy {
   private createSeparatedOutput(
     baseOutput?: OutputOptions | OutputOptions[]
   ): OutputOptions | OutputOptions[] {
-    const output = Array.isArray(baseOutput) ? baseOutput[0] : baseOutput || {}
     const dirs = this.config.output?.frameworkDirs || {
       vue: 'vue',
       react: 'react',
       shared: 'shared'
     }
 
+    // 如果是数组格式，保留所有输出配置
+    if (Array.isArray(baseOutput) && baseOutput.length > 0) {
+      return baseOutput.map(output => ({
+        ...output,
+        dir: output.dir || 'dist',
+        format: output.format || 'es',
+        chunkFileNames: (chunkInfo: any) => {
+          const framework = this.getChunkFramework(chunkInfo)
+          const dir = dirs[framework] || dirs.shared || 'shared'
+          return `${dir}/[name]-[hash].js`
+        },
+        manualChunks: this.createSeparatedManualChunks.bind(this)
+      }))
+    }
+
+    const output = (baseOutput || {}) as OutputOptions
     return {
       ...output,
       dir: output.dir || 'dist',
@@ -641,8 +666,18 @@ export class MixedFrameworkStrategy implements BuildStrategy {
   private createComponentOutput(
     baseOutput?: OutputOptions | OutputOptions[]
   ): OutputOptions | OutputOptions[] {
-    const output = Array.isArray(baseOutput) ? baseOutput[0] : baseOutput || {}
+    // 如果是数组格式，保留所有输出配置
+    if (Array.isArray(baseOutput) && baseOutput.length > 0) {
+      return baseOutput.map(output => ({
+        ...output,
+        dir: output.dir || 'dist',
+        format: output.format || 'es',
+        entryFileNames: output.entryFileNames || '[name].js',
+        chunkFileNames: output.chunkFileNames || 'chunks/[name]-[hash].js'
+      }))
+    }
 
+    const output = (baseOutput || {}) as OutputOptions
     return {
       ...output,
       dir: output.dir || 'dist',

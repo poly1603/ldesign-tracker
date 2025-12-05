@@ -14,9 +14,10 @@
 
 import type { ILibraryStrategy } from '../../types/strategy'
 import type { BuilderConfig } from '../../types/config'
-import type { UnifiedConfig, UnifiedPlugin } from '../../types/adapter'
+import type { UnifiedConfig, UnifiedPlugin, UnifiedOutputConfig } from '../../types/adapter'
 import type { LibraryType } from '../../types/library'
 import type { BuilderPlugin, BuilderPlugins, LazyPlugin } from '../../types/plugin'
+import type { OutputConfig, ArrayOutputItem } from '../../types/output'
 import { findFiles } from '../../utils/file-system'
 import { shouldMinify } from '../../utils/optimization/MinifyProcessor'
 import path from 'path'
@@ -160,28 +161,73 @@ export abstract class BaseStrategy implements ILibraryStrategy {
   }
 
   /**
-   * 构建输出配置
+   * 获取框架特定的全局变量映射
+   * 子类可以覆盖此方法添加框架特定的全局变量
    */
-  protected buildOutputConfig(config: BuilderConfig): any {
-    const output = config.output || {}
+  protected getFrameworkGlobals(): Record<string, string> {
+    return {}
+  }
 
-    // 如果使用旧格式（format数组），转换为旧格式输出
-    if (Array.isArray(output.format)) {
-      const formats = output.format
+  /**
+   * 构建输出配置
+   * 支持三种格式:
+   * 1. 数组格式: [{ format: 'esm', dir: 'es' }, ...]
+   * 2. 对象格式: { es: {...}, esm: {...}, cjs: {...}, umd: {...} }
+   * 3. 传统格式: { format: ['esm', 'cjs'], dir: 'dist' }
+   */
+  protected buildOutputConfig(config: BuilderConfig): ArrayOutputItem[] | OutputConfig {
+    const output = config.output
+
+    // 如果没有配置 output，返回默认配置
+    if (!output) {
       return {
-        dir: output.dir || 'dist',
-        format: formats,
-        sourcemap: output.sourcemap !== false,
-        exports: output.exports || 'auto',
-        preserveModules: output.preserveModules,
-        preserveModulesRoot: output.preserveModulesRoot || 'src',
-        // 保留其他字段（如umd配置）
-        ...output
+        dir: 'dist',
+        format: ['esm', 'cjs'],
+        sourcemap: true,
+        exports: 'auto'
       }
     }
 
-    // 新格式：直接返回完整的output配置
-    return output
+    // 如果 output 本身是数组格式，添加框架全局变量后返回
+    if (Array.isArray(output)) {
+      const globals = this.getFrameworkGlobals()
+      if (Object.keys(globals).length > 0) {
+        return output.map(item => ({
+          ...item,
+          globals: { ...globals, ...(item as ArrayOutputItem).globals }
+        })) as ArrayOutputItem[]
+      }
+      return output as ArrayOutputItem[]
+    }
+
+    // 对象格式配置
+    const typedOutput = output as OutputConfig
+
+    // 如果使用格式特定配置（es/esm/cjs/umd/lib/dist），保留并添加全局变量
+    if (typedOutput.es || typedOutput.esm || typedOutput.cjs || typedOutput.lib || typedOutput.umd || typedOutput.dist) {
+      const globals = this.getFrameworkGlobals()
+      return {
+        ...typedOutput,
+        globals: { ...globals, ...typedOutput.globals }
+      }
+    }
+
+    // 传统格式：使用 format 数组
+    if (Array.isArray(typedOutput.format)) {
+      return {
+        dir: typedOutput.dir || 'dist',
+        format: typedOutput.format,
+        sourcemap: typedOutput.sourcemap !== false,
+        exports: typedOutput.exports || 'auto',
+        preserveModules: typedOutput.preserveModules,
+        preserveModulesRoot: typedOutput.preserveModulesRoot || 'src',
+        globals: { ...this.getFrameworkGlobals(), ...typedOutput.globals },
+        ...typedOutput
+      }
+    }
+
+    // 默认返回原始配置
+    return typedOutput
   }
 
   /**

@@ -41,24 +41,50 @@ export class SwcAdapter implements IBundlerAdapter {
   constructor(options: Partial<AdapterOptions> = {}) {
     this.logger = options.logger || new Logger()
     this.version = 'unknown'
-    this.available = false
+    this.available = true // 假设可用，在实际使用时验证
 
-    // 检查 SWC 是否可用
+    // 尝试同步加载
     this.checkAvailability()
   }
 
   /**
-   * 检查 SWC 可用性
+   * 检查 SWC 可用性（同步）
    */
   private checkAvailability(): void {
     try {
-      this.swc = require('@swc/core')
+      if (typeof require !== 'undefined') {
+        this.swc = require('@swc/core')
+        this.version = this.swc.version || 'unknown'
+        this.available = true
+        this.logger.debug(`SWC ${this.version} 已加载`)
+      }
+    } catch (error) {
+      // 同步加载失败，将在使用时尝试异步加载
+      this.logger.debug('SWC 同步加载失败，将在使用时异步加载')
+    }
+  }
+
+  /**
+   * 确保 SWC 已加载（支持异步）
+   */
+  private async ensureSwcLoaded(): Promise<any> {
+    if (this.swc) {
+      return this.swc
+    }
+
+    try {
+      this.swc = await import('@swc/core')
       this.version = this.swc.version || 'unknown'
       this.available = true
-      this.logger.debug(`SWC ${this.version} 已加载`)
+      this.logger.debug(`SWC 异步加载成功: ${this.version}`)
+      return this.swc
     } catch (error) {
-      this.logger.warn('SWC 不可用，请安装: npm install @swc/core')
       this.available = false
+      throw new BuilderError(
+        ErrorCode.ADAPTER_NOT_AVAILABLE,
+        'SWC 未安装或无法加载，请运行: npm install @swc/core --save-dev',
+        { cause: error as Error }
+      )
     }
   }
 
@@ -66,16 +92,12 @@ export class SwcAdapter implements IBundlerAdapter {
    * 执行构建
    */
   async build(config: UnifiedConfig): Promise<BuildResult> {
-    if (!this.available) {
-      throw new BuilderError(
-        ErrorCode.ADAPTER_NOT_AVAILABLE,
-        'SWC 适配器不可用，请安装 @swc/core'
-      )
-    }
-
     const startTime = Date.now()
 
     try {
+      // 确保 SWC 已加载
+      const swc = await this.ensureSwcLoaded()
+
       // 解析入口文件
       const inputFiles = await this.resolveInputFiles(config.input)
       const outputs: any[] = []
@@ -85,7 +107,7 @@ export class SwcAdapter implements IBundlerAdapter {
 
       // 处理每个文件
       for (const inputFile of inputFiles) {
-        const result = await this.swc.transformFile(inputFile, swcConfig)
+        const result = await swc.transformFile(inputFile, swcConfig)
 
         const outputFile = this.getOutputPath(inputFile, config)
         await fs.ensureDir(path.dirname(outputFile))

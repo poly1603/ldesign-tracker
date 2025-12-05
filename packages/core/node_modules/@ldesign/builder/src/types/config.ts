@@ -39,17 +39,35 @@ export interface BuilderConfig {
   /** 入口文件（可选；未提供时将根据策略自动发现或使用默认值） */
   input?: string | string[] | Record<string, string>
 
+  /** 入口文件别名（与 input 相同，更符合其他工具习惯） */
+  entry?: string | string[] | Record<string, string>
+
   /** 路径别名 */
   alias?: Record<string, string>
 
   /** 输出配置 */
   output?: OutputConfig
 
+  /** 输出目录（简化配置，等同于 output.dir）
+   * @example 'dist'
+   */
+  outDir?: string
+
+  /** 输出格式（简化配置，等同于 output.format）
+   * @example ['esm', 'cjs', 'umd']
+   */
+  formats?: ('esm' | 'cjs' | 'umd' | 'iife')[]
+
   /** 是否生成类型声明文件（顶层开关，具体格式可覆盖） */
   dts?: boolean
 
   /** 是否生成 sourcemap（顶层开关，具体格式可覆盖） */
   sourcemap?: SourcemapType
+
+  /** 构建目标（ES 版本或运行时版本）
+   * @example 'es2020', 'esnext', 'node16', 'chrome90'
+   */
+  target?: string | string[]
 
   /** 打包核心选择 */
   bundler?: 'rollup' | 'rolldown'
@@ -62,6 +80,28 @@ export interface BuilderConfig {
 
   /** 是否启用 bundleless 模式 */
   bundleless?: boolean
+
+  /** 保持模块结构（bundleless 别名，更直观）
+   * @description 启用后每个源文件单独编译，不进行打包合并
+   */
+  preserveModules?: boolean
+
+  /** 代码分割
+   * @description 启用后会自动分割代码，生成多个 chunk
+   */
+  splitting?: boolean
+
+  /** Tree Shaking（简化配置）
+   * @description 启用后会移除未使用的代码
+   */
+  treeshake?: boolean | {
+    /** 模块副作用配置 */
+    moduleSideEffects?: boolean | 'no-external' | string[] | ((id: string) => boolean | null | undefined)
+    /** 是否优化属性访问 */
+    propertyReadSideEffects?: boolean | 'always'
+    /** 是否优化注解 */
+    annotations?: boolean
+  }
 
   /** 外部依赖 */
   external?: ExternalOption
@@ -171,6 +211,66 @@ export interface BuilderConfig {
     /** 公共依赖提取 */
     commonChunks?: boolean
   }
+
+  // ==================== 简化配置（常用快捷方式） ====================
+
+  /** JSX 处理模式（简化配置）
+   * @example 'react', 'vue', 'preserve', 'react-jsx'
+   */
+  jsx?: 'react' | 'vue' | 'preserve' | 'react-jsx' | 'react-jsxdev'
+
+  /** JSX 工厂函数
+   * @example 'React.createElement', 'h'
+   */
+  jsxFactory?: string
+
+  /** JSX Fragment
+   * @example 'React.Fragment', 'Fragment'
+   */
+  jsxFragment?: string
+
+  /** ESM/CJS 互操作垫片
+   * @description 启用后会自动添加 __dirname, __filename, require 等 shims
+   */
+  shims?: boolean
+
+  /** 静态文件复制配置 */
+  copy?: CopyPattern[]
+
+  /** 资产处理配置 */
+  assets?: {
+    /** 内联大小阈值（字节），小于此值的资产会被内联为 base64 */
+    inlineLimit?: number
+    /** 资产输出目录 */
+    outDir?: string
+    /** 文件名模式 */
+    fileNames?: string
+  }
+
+  /** 代码注入（头部）
+   * @description 在每个输出文件头部添加的代码或注释
+   * @example '/* eslint-disable *\/'
+   */
+  inject?: string | string[]
+
+  /** 替换配置（编译时常量替换）
+   * @example { 'process.env.NODE_ENV': '"production"' }
+   */
+  replace?: Record<string, string>
+}
+
+/**
+ * 复制文件模式
+ */
+export interface CopyPattern {
+  /** 源文件或目录（支持 glob） */
+  from: string
+  /** 目标目录 */
+  to?: string
+  /** 是否扁平化（不保留目录结构） */
+  flatten?: boolean
+  /** 排除模式 */
+  exclude?: string[]
 }
 
 /**

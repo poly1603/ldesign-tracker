@@ -50,7 +50,7 @@ export type ExternalOption =
 export interface UnifiedConfig {
   // 基础配置
   input: string | string[] | Record<string, string>
-  output: UnifiedOutputConfig
+  output: UnifiedOutputConfig | UnifiedOutputConfig[]
 
   // 外部依赖
   external?: ExternalOption
@@ -91,12 +91,16 @@ export interface UnifiedOutputConfig {
   fileName?: string | ((chunkInfo: ChunkInfo) => string)
   chunkFileNames?: string
   assetFileNames?: string
+  entryFileNames?: string | ((chunkInfo: ChunkInfo) => string)
   sourcemap?: boolean | 'inline' | 'hidden'
   globals?: Record<string, string>
   banner?: string | (() => string | Promise<string>)
   footer?: string | (() => string | Promise<string>)
   intro?: string | (() => string | Promise<string>)
   outro?: string | (() => string | Promise<string>)
+  preserveModules?: boolean
+  preserveModulesRoot?: string
+  exports?: 'auto' | 'default' | 'named' | 'none'
 }
 
 /**

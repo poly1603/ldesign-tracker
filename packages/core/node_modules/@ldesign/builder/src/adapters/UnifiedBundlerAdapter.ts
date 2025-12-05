@@ -18,13 +18,15 @@ import type { BuilderConfig } from '../types/config'
 import type { PerformanceMetrics } from '../types/performance'
 import { RollupAdapter } from './rollup/RollupAdapter'
 import { RolldownAdapter } from './rolldown/RolldownAdapter'
+import { EsbuildAdapter } from './esbuild/EsbuildAdapter'
+import { SwcAdapter } from './swc/SwcAdapter'
 import { Logger } from '../utils/logger'
 import { MemoryOptimizer } from '../utils/memory/MemoryOptimizer'
 import { performance } from 'perf_hooks'
 import path from 'path'
 import fs from 'fs-extra'
 
-export type BundlerType = 'rollup' | 'rolldown'
+export type BundlerType = 'rollup' | 'rolldown' | 'esbuild' | 'swc'
 
 export interface UnifiedAdapterOptions {
   bundler?: BundlerType
@@ -111,6 +113,10 @@ export class UnifiedBundlerAdapter implements IBundlerAdapter {
         return new RollupAdapter(adapterOptions)
       case 'rolldown':
         return new RolldownAdapter(adapterOptions)
+      case 'esbuild':
+        return new EsbuildAdapter(adapterOptions)
+      case 'swc':
+        return new SwcAdapter(adapterOptions)
       default:
         throw new Error(`不支持的打包器: ${bundler}`)
     }
