@@ -21,6 +21,26 @@ import { cleanCommand } from './commands/clean'
 import { examplesCommand } from './commands/examples'
 import { registerLintConfigsCommand } from './commands/lint-configs'
 import { registerUICommand } from './commands/ui'
+import { registerDashboardCommand } from './commands/ui-dashboard'
+import { registerVersionCommand } from './commands/version'
+import { registerPublishCommands } from './commands/publish'
+import { registerDevCommand } from './commands/dev'
+import { registerLicenseCommand } from './commands/license'
+import { registerChangelogCommand } from './commands/changelog'
+import { registerProfileCommand } from './commands/profile'
+import { registerCheckCommands } from './commands/check'
+import { registerBenchmarkCommand } from './commands/benchmark'
+import { registerNotifyCommand } from './commands/notify'
+import { registerOutdatedCommands } from './commands/outdated'
+import { registerSizeCommands } from './commands/size'
+import { registerAuditCommands } from './commands/audit'
+import { registerTypecheckCommands } from './commands/typecheck'
+import { registerHooksCommand } from './commands/hooks'
+import { registerCICommand } from './commands/ci'
+import { registerCreateCommands } from './commands/create'
+import { registerMigrateCommands } from './commands/migrate'
+import { registerVisualizeCommand } from './commands/visualize'
+import { registerGraphCommand } from './commands/graph'
 import { logger, setLogLevel } from '../utils/logger'
 import { setupGlobalErrorHandling } from '../utils/error-handler'
 
@@ -80,6 +100,26 @@ function createCLI(): Command {
   program.addCommand(examplesCommand)
   registerLintConfigsCommand(program)
   registerUICommand(program)
+  registerDashboardCommand(program)
+  registerVersionCommand(program)
+  registerPublishCommands(program)
+  registerDevCommand(program)
+  registerLicenseCommand(program)
+  registerChangelogCommand(program)
+  registerProfileCommand(program)
+  registerCheckCommands(program)
+  registerBenchmarkCommand(program)
+  registerNotifyCommand(program)
+  registerOutdatedCommands(program)
+  registerSizeCommands(program)
+  registerAuditCommands(program)
+  registerTypecheckCommands(program)
+  registerHooksCommand(program)
+  registerCICommand(program)
+  registerCreateCommands(program)
+  registerMigrateCommands(program)
+  registerVisualizeCommand(program)
+  registerGraphCommand(program)
 
   // 处理全局选项
   program.hook('preAction', (thisCommand) => {

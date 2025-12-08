@@ -262,6 +262,74 @@ export type {
 // CLI 导出
 export { BuilderCLI, createCLI, main as runCLI } from './cli'
 
+// 版本管理导出
+export {
+  VersionManager,
+  createVersionManager
+} from './core/VersionManager'
+export type {
+  VersionInfo,
+  VersionArchive,
+  VersionManagerConfig,
+  VersionOutput
+} from './core/VersionManager'
+
+// NPM 发布导出
+export {
+  NpmPublisher,
+  createNpmPublisher
+} from './core/NpmPublisher'
+export type {
+  PublishOptions,
+  PublishResult,
+  PublishHistory,
+  RegistryConfig,
+  PrePublishCheck,
+  PackageInfo
+} from './core/NpmPublisher'
+
+// 构建通知导出
+export {
+  BuildNotifier,
+  createBuildNotifier
+} from './core/BuildNotifier'
+export type {
+  NotificationConfig,
+  BuildNotification
+} from './core/BuildNotifier'
+
+// 性能基准测试导出
+export {
+  BuildBenchmark,
+  createBuildBenchmark
+} from './core/BuildBenchmark'
+export type {
+  BuildMetrics,
+  BenchmarkStats,
+  PerformanceTrend
+} from './core/BuildBenchmark'
+
+// 构建配置预设导出
+export {
+  BuildProfiles,
+  createBuildProfiles
+} from './core/BuildProfiles'
+export type {
+  BuildProfile,
+  ProfilesConfig
+} from './core/BuildProfiles'
+
+// 循环依赖检测导出
+export {
+  CircularDependencyDetector,
+  createCircularDependencyDetector
+} from './analyzers/CircularDependencyDetector'
+export type {
+  CircularDependency,
+  DependencyGraph,
+  DetectionOptions
+} from './analyzers/CircularDependencyDetector'
+
 /**
  * 默认导出 - LibraryBuilder 类
  */

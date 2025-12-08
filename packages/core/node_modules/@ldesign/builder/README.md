@@ -1293,6 +1293,137 @@ pnpm dev
 
 ---
 
+## 🛠️ CLI 命令参考
+
+`@ldesign/builder` 提供了 40+ 个 CLI 命令，覆盖构建、分析、发布等全流程。
+
+### 核心命令
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `build` | 构建项目 | `ldesign-builder build` |
+| `watch` | 监听模式构建 | `ldesign-builder watch` |
+| `dev` | 启动开发服务器 | `ldesign-builder dev --port 3000` |
+| `init` | 交互式初始化 | `ldesign-builder init` |
+| `clean` | 清理构建产物 | `ldesign-builder clean --all` |
+
+### 项目创建
+
+| 命令 | 说明 |
+|------|------|
+| `create <name>` | 创建新项目 |
+| `templates` | 列出可用模板 |
+| `migrate` | 从其他工具迁移 |
+
+```bash
+# 创建 TypeScript 库
+ldesign-builder create my-lib --template typescript-lib
+
+# 从 tsup 迁移
+ldesign-builder migrate --from tsup
+```
+
+### 版本与发布
+
+| 命令 | 说明 |
+|------|------|
+| `version show` | 显示当前版本 |
+| `version bump <type>` | 递增版本号 |
+| `version archive` | 归档当前版本 |
+| `publish` | 发布到 npm |
+| `publish check` | 发布前检查 |
+| `changelog` | 生成更新日志 |
+
+```bash
+# 版本递增并发布
+ldesign-builder version bump minor
+ldesign-builder publish --tag latest
+```
+
+### 代码质量
+
+| 命令 | 说明 |
+|------|------|
+| `typecheck` | TypeScript 类型检查 |
+| `circular` | 循环依赖检测 |
+| `license` | 依赖许可证检查 |
+| `audit` | 安全漏洞扫描 |
+| `outdated` | 检查过期依赖 |
+| `size` | Bundle 体积检查 |
+
+```bash
+# CI 环境检查
+ldesign-builder typecheck --ci
+ldesign-builder circular --fail-on-circular
+ldesign-builder audit --ci
+ldesign-builder size --ci -l 500KB
+```
+
+### 分析与可视化
+
+| 命令 | 说明 |
+|------|------|
+| `analyze` | 构建产物分析 |
+| `visualize` | 生成可视化报告 |
+| `graph` | 依赖关系图 |
+| `benchmark stats` | 性能统计 |
+| `benchmark trend` | 性能趋势 |
+
+```bash
+# 生成分析报告
+ldesign-builder visualize --open
+ldesign-builder graph --output deps.html --open
+```
+
+### 配置管理
+
+| 命令 | 说明 |
+|------|------|
+| `profile list` | 列出构建预设 |
+| `profile use <name>` | 切换预设 |
+| `profile create <name>` | 创建预设 |
+| `dashboard` | 启动可视化界面 |
+
+```bash
+# 使用开发模式预设
+ldesign-builder profile use development
+ldesign-builder build
+```
+
+### 通知配置
+
+| 命令 | 说明 |
+|------|------|
+| `notify status` | 查看通知配置 |
+| `notify slack -u <url>` | 配置 Slack |
+| `notify dingtalk -u <url>` | 配置钉钉 |
+| `notify test` | 发送测试通知 |
+
+### CI/CD
+
+| 命令 | 说明 |
+|------|------|
+| `ci init` | 生成 CI 配置 |
+| `ci init --github` | GitHub Actions |
+| `ci init --gitlab` | GitLab CI |
+| `hooks install` | 安装 Git 钩子 |
+
+```bash
+# 生成所有 CI 配置
+ldesign-builder ci init --all
+ldesign-builder hooks install --all
+```
+
+### 升级与维护
+
+| 命令 | 说明 |
+|------|------|
+| `upgrade` | 更新依赖版本 |
+| `audit:report` | 生成安全报告 |
+| `benchmark report` | 生成性能报告 |
+
+---
+
 ## 📄 许可证
 
 [MIT](./LICENSE) © LDesign Team
