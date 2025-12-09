@@ -8,6 +8,8 @@
  */
 
 import { EventEmitter } from 'events'
+import { existsSync } from 'fs'
+import { resolve, isAbsolute } from 'path'
 import type {
   BuilderConfig,
   ConfigManagerOptions,
@@ -146,13 +148,37 @@ export class ConfigManager extends EventEmitter {
           (config.output?.umd === true || (config.output?.umd && typeof config.output.umd === 'object'))
 
         if (!hasEnabledFormat) {
-          result.errors.push('缺少入口文件配置（需要在顶层或 output 中指定 input）')
+          result.errors.push(
+            '❌ 缺少入口文件配置\n' +
+            '   需要在配置文件中指定 input，例如:\n' +
+            '   • input: "src/index.ts"\n' +
+            '   • input: { index: "src/index.ts", utils: "src/utils/index.ts" }\n' +
+            '   • 或在 output.esm/cjs/umd 中分别指定 input'
+          )
         }
       }
 
       // 检查空的input
       if (config.input === '') {
-        result.errors.push('input 不能为空字符串')
+        result.errors.push('❌ input 不能为空字符串，请指定有效的入口文件路径')
+      }
+
+      // 检查入口文件是否存在（仅对字符串类型的 input）
+      if (typeof config.input === 'string' && config.input && !config.input.includes('*')) {
+        const inputPath = isAbsolute(config.input)
+          ? config.input
+          : resolve(config.cwd || process.cwd(), config.input)
+
+        if (!existsSync(inputPath)) {
+          result.errors.push(
+            `❌ 入口文件不存在: ${config.input}\n` +
+            `   完整路径: ${inputPath}\n` +
+            `   请检查:\n` +
+            `   • 文件路径是否正确\n` +
+            `   • 文件是否已创建\n` +
+            `   • 工作目录是否正确 (cwd: ${config.cwd || process.cwd()})`
+          )
+        }
       }
 
       // 验证 libraryType

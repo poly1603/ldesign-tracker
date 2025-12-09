@@ -1,6 +1,20 @@
-dist
+﻿# Build outputs
 es
-lib
-cjs
 esm
+lib
+dist
+cjs
+
+# Dependencies
 node_modules
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# Cache
+.rollup.cache
+*.tsbuildinfo

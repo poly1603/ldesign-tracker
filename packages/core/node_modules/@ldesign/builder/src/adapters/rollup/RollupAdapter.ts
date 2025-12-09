@@ -174,8 +174,13 @@ export class RollupAdapter implements IBundlerAdapter {
         this.logger.debug('清理模式：已禁用缓存')
       }
 
+      this.logger.debug('🔧 加载 Rollup 模块...')
       const rollup = await this.loadRollup()
+      this.logger.debug('✅ Rollup 模块加载完成')
+
+      this.logger.debug('⚙️  转换配置...')
       const rollupConfig = await this.transformConfig(config)
+      this.logger.debug('✅ 配置转换完成')
 
       // 静默开始构建（减少日志输出）
       const startTime = Date.now()
@@ -185,12 +190,18 @@ export class RollupAdapter implements IBundlerAdapter {
 
       // 如果有多个配置，使用并行构建提升速度
       if (this.multiConfigs && this.multiConfigs.length > 1) {
+        this.logger.debug(`📦 并行构建 ${this.multiConfigs.length} 个配置...`)
         // 并行构建所有配置（静默模式）
         const buildPromises = this.multiConfigs.map(async (singleConfig, index) => {
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] 开始 rollup.rollup()...`)
           const bundle = await rollup.rollup(singleConfig)
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] rollup.rollup() 完成`)
 
           // 生成并记录输出（保留每个配置的 format）
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] 开始 bundle.generate()...`)
           const { output } = await bundle.generate(singleConfig.output)
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] bundle.generate() 完成`)
+
           // 安全获取 format，处理 output 可能是数组的情况
           const outputFormat = Array.isArray(singleConfig.output)
             ? (singleConfig.output[0]?.format || 'es')
@@ -201,39 +212,54 @@ export class RollupAdapter implements IBundlerAdapter {
           }))
 
           // 写入文件
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] 开始 bundle.write()...`)
           await bundle.write(singleConfig.output)
+          this.logger.debug(`  [${index + 1}/${this.multiConfigs!.length}] bundle.write() 完成`)
+
           await bundle.close()
 
           return formatResults
         })
 
         // 等待所有构建完成
+        this.logger.debug('⏳ 等待所有并行构建完成...')
         const allResults = await Promise.all(buildPromises)
+        this.logger.debug('✅ 所有并行构建完成')
         results.push(...allResults.flat())
       } else {
         // 单配置构建
+        this.logger.debug('📦 单配置构建...')
+        this.logger.debug('  开始 rollup.rollup()...')
         const bundle = await rollup.rollup(rollupConfig)
+        this.logger.debug('  rollup.rollup() 完成')
 
         const outputs = Array.isArray(rollupConfig.output)
           ? rollupConfig.output
           : [rollupConfig.output]
 
+        this.logger.debug(`  处理 ${outputs.length} 个输出配置...`)
         for (const outputConfig of outputs) {
+          this.logger.debug(`  开始 bundle.generate() for ${outputConfig?.format || 'es'}...`)
           const { output } = await bundle.generate(outputConfig)
+          this.logger.debug(`  bundle.generate() 完成，生成 ${output.length} 个文件`)
           for (const item of output) {
             results.push({ chunk: item, format: String(outputConfig?.format || 'es') })
           }
         }
 
         // 写入文件
+        this.logger.debug('  开始写入文件...')
         for (const outputConfig of outputs) {
           await bundle.write(outputConfig)
         }
+        this.logger.debug('  文件写入完成')
 
         await bundle.close()
+        this.logger.debug('✅ 单配置构建完成')
       }
 
       const duration = Date.now() - startTime
+      this.logger.debug(`⏱️  Rollup 构建总耗时: ${duration}ms`)
 
       // 计算 gzip 大小并产出规范化的 outputs
       const { gzipSize } = await import('gzip-size')
@@ -414,11 +440,17 @@ export class RollupAdapter implements IBundlerAdapter {
    * 转换配置
    */
   async transformConfig(config: UnifiedConfig): Promise<BundlerSpecificConfig> {
+    this.logger.debug('🔧 开始转换配置...')
+
     // 转换为 Rollup 配置格式
+    this.logger.debug('  获取基础插件...')
     const basePlugins = await this.getBasePlugins(config)
+    this.logger.debug(`  基础插件数量: ${basePlugins.length}`)
 
     // 应用 exclude 过滤到输入配置
+    this.logger.debug('  规范化输入配置...')
     const filteredInput = await normalizeInput(config.input, process.cwd(), config.exclude)
+    this.logger.debug(`  输入配置: ${JSON.stringify(filteredInput).substring(0, 200)}...`)
 
     const rollupConfig: RollupOptions = {
       input: filteredInput,
@@ -883,21 +915,32 @@ export class RollupAdapter implements IBundlerAdapter {
    */
   private async getBasePlugins(config: UnifiedConfig): Promise<BundlerSpecificPlugin[]> {
     try {
+      this.logger.debug('    加载 @rollup/plugin-node-resolve...')
       const { nodeResolve } = await import('@rollup/plugin-node-resolve')
-      const commonjs = (await import('@rollup/plugin-commonjs')).default
-      const json = (await import('@rollup/plugin-json')).default
+      this.logger.debug('    ✅ node-resolve 加载完成')
 
+      this.logger.debug('    加载 @rollup/plugin-commonjs...')
+      const commonjs = (await import('@rollup/plugin-commonjs')).default
+      this.logger.debug('    ✅ commonjs 加载完成')
+
+      this.logger.debug('    加载 @rollup/plugin-json...')
+      const json = (await import('@rollup/plugin-json')).default
+      this.logger.debug('    ✅ json 加载完成')
+
+      this.logger.debug('    配置 node-resolve 插件...')
       const resolvePlugin = nodeResolve({
         browser: true,
         preferBuiltins: false,
         extensions: ['.mjs', '.js', '.json', '.ts', '.tsx']
       })
 
+      this.logger.debug('    配置 commonjs 插件...')
       const commonjsPlugin = commonjs({
         include: /node_modules/,
         ignoreDynamicRequires: false
       })
 
+      this.logger.debug('    配置 json 插件...')
       const jsonPlugin = json({
         // 优化 JSON 插件配置
         compact: false,  // 保持 JSON 格式化，便于调试
@@ -915,11 +958,16 @@ export class RollupAdapter implements IBundlerAdapter {
       ]
 
       // 添加 Babel 插件（如果启用）
+      this.logger.debug('    检查 Babel 插件...')
       const babelPlugin = await this.getBabelPlugin(config)
       if (babelPlugin) {
+        this.logger.debug('    ✅ Babel 插件已添加')
         plugins.push(babelPlugin)
+      } else {
+        this.logger.debug('    ⊗ Babel 插件未启用')
       }
 
+      this.logger.debug(`    ✅ 基础插件加载完成，共 ${plugins.length} 个`)
       return plugins
     } catch (error) {
       this.logger.warn('基础插件加载失败，将尝试继续构建', (error as Error).message)

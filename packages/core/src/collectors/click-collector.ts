@@ -27,6 +27,7 @@ export class ClickCollector extends BaseCollector {
   private options: Required<ClickCollectorOptions>
   private clickHandler: ((e: MouseEvent) => void) | null = null
   private lastClickTime = 0
+  private isProcessing = false
 
   constructor(options: ClickCollectorOptions = {}) {
     super()
@@ -73,6 +74,11 @@ export class ClickCollector extends BaseCollector {
    * @param event - 鼠标事件
    */
   private handleClick(event: MouseEvent): void {
+    // 防止重入（避免无限循环）
+    if (this.isProcessing) {
+      return
+    }
+
     // 防抖处理
     const now = Date.now()
     if (now - this.lastClickTime < this.options.debounceDelay) {
@@ -95,12 +101,18 @@ export class ClickCollector extends BaseCollector {
       button: event.button,
     }
 
-    this.emit({
-      type: TrackEventType.CLICK,
-      name: this.getEventName(target),
-      target: elementInfo,
-      data: clickData,
-    })
+    // 标记正在处理，防止重入
+    this.isProcessing = true
+    try {
+      this.emit({
+        type: TrackEventType.CLICK,
+        name: this.getEventName(target),
+        target: elementInfo,
+        data: clickData,
+      })
+    } finally {
+      this.isProcessing = false
+    }
   }
 
   /**

@@ -10,60 +10,60 @@
     ".": {
       "types": "./esm/index.d.ts",
       "import": "./esm/index.js",
-      "require": "./cjs/index.cjs",
+      "require": "./lib/index.cjs",
       "default": "./esm/index.js"
     },
     "./composables": {
       "types": "./esm/composables/index.d.ts",
       "import": "./esm/composables/index.js",
-      "require": "./cjs/composables/index.cjs",
+      "require": "./lib/composables/index.cjs",
       "default": "./esm/composables/index.js"
     },
     "./composables/*": {
       "types": "./esm/composables/*.d.ts",
       "import": "./esm/composables/*.js",
-      "require": "./cjs/composables/*.cjs",
+      "require": "./lib/composables/*.cjs",
       "default": "./esm/composables/*.js"
     },
     "./directives": {
       "types": "./esm/directives/index.d.ts",
       "import": "./esm/directives/index.js",
-      "require": "./cjs/directives/index.cjs",
+      "require": "./lib/directives/index.cjs",
       "default": "./esm/directives/index.js"
     },
     "./directives/*": {
       "types": "./esm/directives/*.d.ts",
       "import": "./esm/directives/*.js",
-      "require": "./cjs/directives/*.cjs",
+      "require": "./lib/directives/*.cjs",
       "default": "./esm/directives/*.js"
     },
     "./plugin": {
       "types": "./esm/plugin/index.d.ts",
       "import": "./esm/plugin/index.js",
-      "require": "./cjs/plugin/index.cjs",
+      "require": "./lib/plugin/index.cjs",
       "default": "./esm/plugin/index.js"
     },
     "./plugin/*": {
       "types": "./esm/plugin/*.d.ts",
       "import": "./esm/plugin/*.js",
-      "require": "./cjs/plugin/*.cjs",
+      "require": "./lib/plugin/*.cjs",
       "default": "./esm/plugin/*.js"
     },
     "./plugins": {
       "types": "./esm/plugins/index.d.ts",
       "import": "./esm/plugins/index.js",
-      "require": "./cjs/plugins/index.cjs",
+      "require": "./lib/plugins/index.cjs",
       "default": "./esm/plugins/index.js"
     },
     "./plugins/*": {
       "types": "./esm/plugins/*.d.ts",
       "import": "./esm/plugins/*.js",
-      "require": "./cjs/plugins/*.cjs",
+      "require": "./lib/plugins/*.cjs",
       "default": "./esm/plugins/*.js"
     },
     "./package.json": "./package.json"
   },
-  "main": "./cjs/index.cjs",
+  "main": "./lib/index.cjs",
   "module": "./esm/index.js",
   "types": "./esm/index.d.ts",
   "unpkg": "./dist/index.min.js",
@@ -73,7 +73,7 @@
     "LICENSE",
     "CHANGELOG.md",
     "esm",
-    "cjs",
+    "lib",
     "dist"
   ],
   "scripts": {

@@ -19,16 +19,20 @@
     ".": {
       "types": "./es/index.d.ts",
       "import": "./es/index.js",
-      "require": "./lib/index.cjs"
-    }
+      "require": "./lib/index.cjs",
+      "default": "./es/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "main": "./lib/index.cjs",
   "module": "./es/index.js",
   "types": "./es/index.d.ts",
+  "unpkg": "./dist/index.min.js",
+  "jsdelivr": "./dist/index.min.js",
   "files": [
     "README.md",
     "LICENSE",
-    "package.json",
+    "CHANGELOG.md",
     "es",
     "lib",
     "dist"
@@ -55,11 +59,6 @@
   "peerDependencies": {
     "vue": ">=3.0.0"
   },
-  "peerDependenciesMeta": {
-    "vue": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@antfu/eslint-config": "^6.0.0",
     "@ldesign/builder": "workspace:*",
@@ -69,6 +68,12 @@
     "typescript": "^5.7.3",
     "vitest": "^2.0.0"
   },
-  "private": true
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
+  "private": true,
+  "typings": "./es/index.d.ts",
+  "browser": "./dist/index.js"
 }
-

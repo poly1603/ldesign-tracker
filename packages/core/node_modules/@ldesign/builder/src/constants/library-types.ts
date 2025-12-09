@@ -353,7 +353,9 @@ export const LIBRARY_TYPE_EXTENSIONS = {
   [LibraryType.PREACT]: ['.ts', '.tsx', '.js', '.jsx'],
   [LibraryType.LIT]: ['.ts', '.js', '.css'],
   [LibraryType.ANGULAR]: ['.ts', '.html', '.css', '.scss'],
-  [LibraryType.MIXED]: ['.ts', '.tsx', '.vue', '.css', '.less', '.scss', '.sass']
+  [LibraryType.QWIK]: ['.ts', '.tsx', '.js', '.jsx'],
+  [LibraryType.MIXED]: ['.ts', '.tsx', '.vue', '.css', '.less', '.scss', '.sass'],
+  [LibraryType.ENHANCED_MIXED]: ['.ts', '.tsx', '.vue', '.jsx', '.svelte', '.css', '.less', '.scss']
 } as const
 
 /**

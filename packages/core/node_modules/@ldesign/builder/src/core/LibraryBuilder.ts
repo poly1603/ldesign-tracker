@@ -147,11 +147,13 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
 
       // 清理输出目录（如果启用）
       if (mergedConfig.clean) {
+        this.logger.debug('🧹 清理输出目录...')
         await this.cleanOutputDirs(mergedConfig)
       }
 
       // 根据配置切换打包核心（确保与 CLI/配置一致）
       if (mergedConfig.bundler && mergedConfig.bundler !== this.bundlerAdapter.name) {
+        this.logger.debug(`🔄 切换打包器: ${mergedConfig.bundler}`)
         this.setBundler(mergedConfig.bundler)
       }
 
@@ -167,20 +169,24 @@ export class LibraryBuilder extends EventEmitter implements ILibraryBuilder {
 
       // 获取库类型（优先使用配置中指定的类型；否则基于项目根目录自动检测）
       const projectRoot = mergedConfig.cwd || process.cwd()
+      this.logger.debug('🔍 检测库类型...')
       let libraryType = mergedConfig.libraryType || await this.detectLibraryType(projectRoot)
 
       // 确保 libraryType 是正确的枚举值
       if (typeof libraryType === 'string') {
         libraryType = libraryType as LibraryType
       }
+      this.logger.debug(`📦 库类型: ${libraryType}`)
 
       // 获取构建策略
+      this.logger.debug('⚙️  应用构建策略...')
       const strategy = this.strategyManager.getStrategy(libraryType)
 
       // 应用策略配置
       const strategyConfig = await strategy.applyStrategy(mergedConfig)
 
       // 执行构建
+      this.logger.debug('🔨 执行打包...')
       const result = await this.bundlerAdapter.build(strategyConfig)
 
       // 处理组件库样式 (TDesign 风格)

@@ -256,20 +256,68 @@ async function executeBuild(options: BuildOptions, globalOptions: any = {}): Pro
       phaseStart = Date.now()
       logger.info(`🔨 开始打包...`)
 
+      // 构建超时时间（默认 5 分钟）
+      const BUILD_TIMEOUT = 5 * 60 * 1000
+      const PROGRESS_WARNING_INTERVAL = 30 * 1000 // 每 30 秒提示一次
+
       // 使用进度跟踪
       let progressPhase = 0
+      let lastProgressTime = Date.now()
+      let progressWarningCount = 0
+
       const progressInterval = setInterval(() => {
         const spinner = logger.createSpinner(progressPhase++)
-        process.stdout.write(`\r${spinner} 构建中... `)
+        const elapsed = Date.now() - phaseStart
+        const elapsedStr = formatDuration(elapsed)
+
+        // 每 30 秒输出一次详细进度信息
+        if (Date.now() - lastProgressTime > PROGRESS_WARNING_INTERVAL) {
+          lastProgressTime = Date.now()
+          progressWarningCount++
+          process.stdout.write('\r' + ' '.repeat(80) + '\r')
+
+          if (progressWarningCount === 1) {
+            logger.info(`⏳ 构建进行中... 已耗时 ${elapsedStr}`)
+          } else if (progressWarningCount === 2) {
+            logger.warn(`⏳ 构建耗时较长 (${elapsedStr})，请检查:`)
+            logger.warn(`   • 配置文件是否正确 (.ldesign/builder.config.ts)`)
+            logger.warn(`   • 入口文件是否存在`)
+            logger.warn(`   • 依赖是否已安装 (pnpm install)`)
+          } else if (progressWarningCount >= 3) {
+            logger.warn(`⚠️  构建已耗时 ${elapsedStr}，可能存在问题`)
+            logger.warn(`   使用 --debug 参数查看详细信息`)
+          }
+        } else {
+          process.stdout.write(`\r${spinner} 构建中... ${elapsedStr} `)
+        }
       }, 100)
 
+      // 超时检测
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(
+            `构建超时 (超过 ${BUILD_TIMEOUT / 1000} 秒)\n\n` +
+            `可能的原因:\n` +
+            `  1. 配置文件有问题 - 检查 .ldesign/builder.config.ts\n` +
+            `  2. 入口文件不存在 - 检查 input 配置\n` +
+            `  3. 依赖未安装 - 运行 pnpm install\n` +
+            `  4. TypeScript 编译错误 - 运行 tsc --noEmit 检查\n` +
+            `  5. 循环依赖 - 检查模块导入\n\n` +
+            `提示: 使用 --debug 参数获取详细信息`
+          ))
+        }, BUILD_TIMEOUT)
+      })
+
       try {
-        result = await builder.build(config)
+        result = await Promise.race([
+          builder.build(config),
+          timeoutPromise
+        ])
         clearInterval(progressInterval)
-        process.stdout.write('\r' + ' '.repeat(50) + '\r') // 清除进度行
+        process.stdout.write('\r' + ' '.repeat(80) + '\r') // 清除进度行
       } catch (error) {
         clearInterval(progressInterval)
-        process.stdout.write('\r' + ' '.repeat(50) + '\r') // 清除进度行
+        process.stdout.write('\r' + ' '.repeat(80) + '\r') // 清除进度行
         throw error
       }
 
@@ -465,20 +513,33 @@ async function buildConfig(options: BuildOptions, globalOptions: any): Promise<B
   try {
     const configPath = options.config
     if (configPath) {
+      logger.debug(`📄 加载指定配置文件: ${configPath}`)
       baseConfig = await configManager.loadConfig({ configFile: configPath })
     } else {
       // 查找配置文件
       const configLoader = new ConfigLoader()
       const foundConfigPath = await configLoader.findConfigFile()
       if (foundConfigPath) {
+        logger.debug(`📄 找到配置文件: ${foundConfigPath}`)
         baseConfig = await configManager.loadConfig({ configFile: foundConfigPath })
       } else {
+        logger.warn(`⚠️  未找到配置文件，使用默认配置`)
+        logger.warn(`   建议在 .ldesign/builder.config.ts 中创建配置文件`)
         baseConfig = await configManager.loadConfig({})
       }
     }
   } catch (error) {
-    // 配置加载失败静默处理
-    baseConfig = await configManager.loadConfig({})
+    // 配置加载失败时给出详细错误信息
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error(`❌ 配置加载失败: ${errorMessage}`)
+    logger.error(``)
+    logger.error(`可能的原因:`)
+    logger.error(`  1. 配置文件语法错误 - 检查 TypeScript/JavaScript 语法`)
+    logger.error(`  2. 导入路径错误 - 检查 import 语句`)
+    logger.error(`  3. 依赖缺失 - 运行 pnpm install`)
+    logger.error(``)
+    logger.error(`提示: 使用 --debug 参数查看详细错误信息`)
+    throw error
   }
 
   // 命令行选项覆盖配置文件

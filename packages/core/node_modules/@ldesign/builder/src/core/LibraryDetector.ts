@@ -86,18 +86,27 @@ export class LibraryDetector {
       } as any
 
       // 检测文件模式
+      this.logger.debug('🔎 检测文件模式...')
       await this.detectFilePatterns(projectPath, scores, evidence)
+      this.logger.debug('✅ 文件模式检测完成')
 
       // 检测依赖
+      this.logger.debug('🔎 检测依赖...')
       await this.detectDependencies(projectPath, scores, evidence)
+      this.logger.debug('✅ 依赖检测完成')
 
       // 检测配置文件
+      this.logger.debug('🔎 检测配置文件...')
       await this.detectConfigFiles(projectPath, scores, evidence)
+      this.logger.debug('✅ 配置文件检测完成')
 
       // 检测 package.json 字段
+      this.logger.debug('🔎 检测 package.json 字段...')
       await this.detectPackageJsonFields(projectPath, scores, evidence)
+      this.logger.debug('✅ package.json 字段检测完成')
 
       // 🧠 智能推断增强
+      this.logger.debug('🔎 智能推断增强...')
       // 场景: Vue3 + TSX (无 .vue 文件)
       // 如果检测到 TSX 文件且有 Vue 依赖，直接判定为 Vue3 并返回
       if (scores[LibraryType.VUE3] > 0 && scores[LibraryType.TYPESCRIPT] > 0) {
@@ -126,7 +135,10 @@ export class LibraryDetector {
         }
       }
 
+      this.logger.debug('✅ 智能推断增强完成')
+
       // 单框架 Solid 快速检测
+      this.logger.debug('🔎 Solid 快速检测...')
       try {
         const solidFiles = await findFiles(['src/**/*.tsx', 'src/**/*.jsx'], {
           cwd: projectPath,
@@ -167,7 +179,10 @@ export class LibraryDetector {
         this.logger.debug('Solid 文件快速检测失败，回退到评分机制:', e)
       }
 
+      this.logger.debug('✅ Solid 检测完成')
+
       // 单框架 Svelte 快速检测
+      this.logger.debug('🔎 Svelte 快速检测...')
       try {
         const svelteFiles = await findFiles(['src/**/*.svelte', 'lib/**/*.svelte', 'components/**/*.svelte'], {
           cwd: projectPath,
@@ -197,11 +212,12 @@ export class LibraryDetector {
       } catch (e) {
         this.logger.debug('Svelte 文件快速检测失败，回退到评分机制:', e)
       }
+      this.logger.debug('✅ Svelte 检测完成')
 
       // 🔥 混合框架检测
-      this.logger.info('🔍 开始混合框架检测...')
+      this.logger.debug('🔎 混合框架检测...')
       const mixedFrameworks = await this.detectMixedFrameworks(projectPath, scores)
-      this.logger.info(`🔍 混合框架检测完成，发现 ${mixedFrameworks.length} 个框架`)
+      this.logger.debug(`✅ 混合框架检测完成，发现 ${mixedFrameworks.length} 个框架`)
       if (mixedFrameworks.length > 1) {
         this.logger.success(`检测到混合框架项目: ${mixedFrameworks.join(', ')}`)
         return {
@@ -218,6 +234,7 @@ export class LibraryDetector {
       }
 
       // 单框架 Vue 快速检测（仅当不是混合框架时）
+      this.logger.debug('🔎 Vue 快速检测...')
       try {
         const vueFiles = await findFiles(['src/**/*.vue', 'lib/**/*.vue', 'components/**/*.vue'], {
           cwd: projectPath,
@@ -264,8 +281,10 @@ export class LibraryDetector {
       } catch (e) {
         this.logger.debug('Vue 文件快速检测失败，回退到评分机制:', e)
       }
+      this.logger.debug('✅ Vue 检测完成')
 
       // 计算最终分数（常规路径）
+      this.logger.debug('🔎 计算最终分数...')
       const finalScores = this.calculateFinalScores(scores)
 
       // 找到最高分的类型
@@ -327,10 +346,12 @@ export class LibraryDetector {
     }
 
     try {
+      this.logger.debug(`🔎 开始搜索文件: ${projectPath}/src/**/*`)
       const allFiles = await findFiles(['src/**/*'], {
         cwd: projectPath,
         ignore: ['node_modules/**', 'dist/**', '**/*.test.*', '**/*.spec.*', '**/__tests__/**', '**/*.d.ts']
       })
+      this.logger.debug(`✅ 文件搜索完成，找到 ${allFiles.length} 个文件`)
 
       for (const file of allFiles) {
         const ext = path.extname(file).toLowerCase()
@@ -367,14 +388,19 @@ export class LibraryDetector {
     // 首先统计所有源文件类型
     const fileStats = await this.analyzeSourceFiles(projectPath)
 
-    for (const [type, pattern] of Object.entries(LIBRARY_TYPE_PATTERNS)) {
+    const patternEntries = Object.entries(LIBRARY_TYPE_PATTERNS)
+    this.logger.debug(`🔎 检测 ${patternEntries.length} 种文件模式...`)
+
+    for (const [type, pattern] of patternEntries) {
       const libraryType = type as LibraryType
+      this.logger.debug(`  🔎 检测 ${type} 文件模式`)
 
       try {
         const files = await findFiles([...pattern.files], {
           cwd: projectPath,
           ignore: ['node_modules/**', 'dist/**', 'build/**', 'es/**', 'lib/**', 'cjs/**', '**/*.test.*', '**/*.spec.*']
         })
+        this.logger.debug(`  ✅ ${type}: 找到 ${files.length} 个文件`)
 
         if (files.length > 0) {
           // 特殊处理样式库：只有当样式文件是主要文件时才判定为样式库
@@ -763,23 +789,26 @@ export class LibraryDetector {
     const frameworks: string[] = []
 
     try {
-      this.logger.debug(`[混合框架检测] 开始检测项目: ${projectPath}`)
+      this.logger.debug(`  混合框架检测 - 开始`)
 
-      // 检测 Vue
+      // 检测 Vue - 只搜索 src 目录，避免 ** 开头的慢模式
+      this.logger.debug(`  混合框架检测 - Vue...`)
       const vueFiles = await findFiles(
-        ['src/**/*.vue', '**/adapters/vue/**/*', '**/composables/**/*'],
+        ['src/**/*.vue', 'src/**/adapters/vue/**/*', 'src/**/composables/**/*'],
         { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', 'es/**', 'lib/**'] }
       )
-      this.logger.debug(`[混合框架检测] Vue 文件数: ${vueFiles.length}, 分数: vue2=${scores.vue2}, vue3=${scores.vue3}`)
+      this.logger.debug(`  ✅ 混合框架检测 - Vue: ${vueFiles.length} 个文件`)
       if (vueFiles.length > 0 || scores.vue2 > 0.3 || scores.vue3 > 0.3) {
         frameworks.push('vue')
       }
 
-      // 检测 React（需排除 Solid 项目）
+      // 检测 React（需排除 Solid 项目）- 只搜索 src 目录
+      this.logger.debug(`  混合框架检测 - React...`)
       const reactFiles = await findFiles(
-        ['src/**/*.jsx', 'src/**/*.tsx', '**/adapters/react/**/*', '**/hooks/**/*'],
+        ['src/**/*.jsx', 'src/**/*.tsx', 'src/**/adapters/react/**/*', 'src/**/hooks/**/*'],
         { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', 'es/**', 'lib/**'] }
       )
+      this.logger.debug(`  ✅ 混合框架检测 - React: ${reactFiles.length} 个文件`)
       // 检查是否有 React 依赖，避免误判 Solid 项目
       let hasReactDep = false
       try {
@@ -797,21 +826,24 @@ export class LibraryDetector {
         frameworks.push('react')
       }
 
-      // 检测 Lit
+      // 检测 Lit - 只搜索 src 目录
+      this.logger.debug(`  混合框架检测 - Lit...`)
       const litFiles = await findFiles(
-        ['**/adapters/lit/**/*', '**/web-components/**/*'],
+        ['src/**/adapters/lit/**/*', 'src/**/web-components/**/*'],
         { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', 'es/**', 'lib/**'] }
       )
-      this.logger.debug(`[混合框架检测] Lit 文件数: ${litFiles.length}, 分数: ${scores.lit}`)
+      this.logger.debug(`  ✅ 混合框架检测 - Lit: ${litFiles.length} 个文件`)
       if (litFiles.length > 0 || scores.lit > 0.3) {
         frameworks.push('lit')
       }
 
       // 检测 Svelte
+      this.logger.debug(`  混合框架检测 - Svelte...`)
       const svelteFiles = await findFiles(
         ['src/**/*.svelte'],
         { cwd: projectPath, ignore: ['node_modules/**', 'dist/**', 'es/**', 'lib/**'] }
       )
+      this.logger.debug(`  ✅ 混合框架检测 - Svelte: ${svelteFiles.length} 个文件`)
       if (svelteFiles.length > 0 || scores.svelte > 0.3) {
         frameworks.push('svelte')
       }

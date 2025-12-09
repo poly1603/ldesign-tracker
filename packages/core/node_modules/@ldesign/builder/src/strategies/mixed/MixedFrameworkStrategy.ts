@@ -292,44 +292,86 @@ export class MixedFrameworkStrategy implements BuildStrategy {
     this.logger.debug(`框架使用统计: Vue=${stats.vue}, React=${stats.react}, Unknown=${stats.unknown}`)
 
     // 只为实际使用的框架加载插件
-    // 1. Vue 插件（只在有 Vue 文件时加载）
+    // 1. Vue JSX 插件（必须在 Vue SFC 插件之前）
     if (stats.vue > 0) {
       try {
+        const { default: VueJsx } = await import('unplugin-vue-jsx/rollup')
+        plugins.push(VueJsx({
+          version: 3, // Vue 3
+          optimize: true
+        }) as any)
+        this.logger.debug('已加载 Vue JSX 插件')
+      } catch (e) {
+        this.logger.debug('Vue JSX 插件不可用，跳过 JSX/TSX 支持')
+      }
+
+      // 2. Vue SFC 插件
+      try {
+        // 注册 TypeScript 支持以解决 "No fs option provided to compileScript" 错误
+        try {
+          const { registerTS } = await import('@vue/compiler-sfc')
+          const typescript = await import('typescript')
+          registerTS(() => typescript.default)
+          this.logger.debug('已注册 TypeScript 支持')
+        } catch (tsError) {
+          this.logger.debug('TypeScript 注册失败，继续使用默认配置')
+        }
+
         const { default: vue } = await import('rollup-plugin-vue')
         // 使用类型断言，因为 rollup-plugin-vue 类型定义可能不完整
         plugins.push(vue({
           compileTemplate: true,
-          preprocessStyles: true
+          preprocessStyles: true,
+          include: /\.vue$/,
+          // Vue 插件内部处理样式
+          css: true
         } as any) as any)
 
-        // PostCSS 插件（处理样式）
-        const { default: postcss } = await import('rollup-plugin-postcss')
-        plugins.push(postcss({
-          extract: true,  // 提取CSS到单独文件
-          inject: false,
-          minimize: true,
-          extensions: ['.css', '.less', '.scss', '.sass']
-        }) as any)
-
-        this.logger.debug('已加载 Vue 插件')
+        this.logger.debug('已加载 Vue SFC 插件')
       } catch (e) {
-        this.logger.debug('Vue/PostCSS 插件加载失败:', e)
+        this.logger.debug('Vue SFC 插件加载失败:', e)
       }
     }
 
-    // 2. PostCSS 插件（通用CSS处理）
+    // 2. 样式处理插件 - 优先使用 rollup-plugin-styles（更好的 Vue SFC 支持）
     try {
-      const { default: postcss } = await import('rollup-plugin-postcss')
-      plugins.push(postcss({
-        extract: true,  // 提取CSS到单独文件
-        inject: false,
+      const Styles = await import('rollup-plugin-styles')
+      plugins.push(Styles.default({
+        mode: 'extract',
+        modules: false,
         minimize: true,
-        extensions: ['.css', '.less', '.scss', '.sass'],
-        use: ['less']  // 支持Less预处理
+        namedExports: true,
+        include: [
+          '**/*.less',
+          '**/*.css',
+          '**/*.scss',
+          '**/*.sass'
+        ],
+        url: {
+          inline: false,
+        }
       }) as any)
-      this.logger.debug('已加载 PostCSS 插件（通用CSS处理）')
+      this.logger.debug('已加载 rollup-plugin-styles 插件')
     } catch (e) {
-      this.logger.debug('PostCSS 插件加载失败:', e)
+      // 回退到 rollup-plugin-postcss
+      try {
+        const { default: postcss } = await import('rollup-plugin-postcss')
+        plugins.push(postcss({
+          extract: true,
+          inject: false,
+          minimize: true,
+          modules: false,
+          // 包含 Vue 样式块
+          include: [
+            /\.(css|less|scss|sass)$/,
+            /\?vue&type=style/
+          ],
+          use: ['less']
+        }) as any)
+        this.logger.debug('已加载 PostCSS 插件（回退）')
+      } catch (e2) {
+        this.logger.debug('样式插件加载失败:', e2)
+      }
     }
 
     // 3. Node Resolve（解析依赖）
@@ -767,9 +809,46 @@ export class MixedFrameworkStrategy implements BuildStrategy {
    * 获取源文件
    */
   private async getSourceFiles(options: RollupOptions): Promise<string[]> {
-    // 这里应该通过glob或其他方式获取所有源文件
-    // 暂时返回空数组
-    return []
+    try {
+      const fastGlob = await import('fast-glob')
+      const glob = (fastGlob as any).default || fastGlob
+
+      // 从 options.input 推断项目根目录
+      let cwd = process.cwd()
+      if (typeof options.input === 'string') {
+        const path = await import('path')
+        cwd = path.default.dirname(path.default.resolve(options.input))
+        // 如果入口在 src 目录，取父目录
+        if (cwd.endsWith('src') || cwd.includes('/src/') || cwd.includes('\\src\\')) {
+          cwd = path.default.dirname(cwd)
+        }
+      }
+
+      // 搜索所有可能的源文件
+      const files = await glob.async([
+        'src/**/*.vue',
+        'src/**/*.tsx',
+        'src/**/*.jsx',
+        'src/**/*.ts',
+        'src/**/*.js',
+        'src/**/*.svelte',
+        'lib/**/*.vue',
+        'lib/**/*.tsx',
+        'lib/**/*.jsx',
+        'components/**/*.vue',
+        'components/**/*.tsx'
+      ], {
+        cwd,
+        absolute: true,
+        ignore: ['node_modules/**', 'dist/**', 'es/**', 'lib/**', 'esm/**', '**/*.d.ts', '**/*.test.*', '**/*.spec.*']
+      })
+
+      this.logger.debug(`找到 ${files.length} 个源文件`)
+      return files
+    } catch (error) {
+      this.logger.warn('获取源文件失败:', error)
+      return []
+    }
   }
 
   /**

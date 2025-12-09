@@ -8,59 +8,59 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./es/index.d.ts",
-      "import": "./es/index.js",
+      "types": "./esm/index.d.ts",
+      "import": "./esm/index.js",
       "require": "./lib/index.cjs",
-      "default": "./es/index.js"
+      "default": "./esm/index.js"
     },
     "./collectors": {
-      "types": "./es/collectors/index.d.ts",
-      "import": "./es/collectors/index.js",
+      "types": "./esm/collectors/index.d.ts",
+      "import": "./esm/collectors/index.js",
       "require": "./lib/collectors/index.cjs",
-      "default": "./es/collectors/index.js"
+      "default": "./esm/collectors/index.js"
     },
     "./collectors/*": {
-      "types": "./es/collectors/*.d.ts",
-      "import": "./es/collectors/*.js",
+      "types": "./esm/collectors/*.d.ts",
+      "import": "./esm/collectors/*.js",
       "require": "./lib/collectors/*.cjs",
-      "default": "./es/collectors/*.js"
+      "default": "./esm/collectors/*.js"
     },
     "./tracker": {
-      "types": "./es/tracker/index.d.ts",
-      "import": "./es/tracker/index.js",
+      "types": "./esm/tracker/index.d.ts",
+      "import": "./esm/tracker/index.js",
       "require": "./lib/tracker/index.cjs",
-      "default": "./es/tracker/index.js"
+      "default": "./esm/tracker/index.js"
     },
     "./tracker/*": {
-      "types": "./es/tracker/*.d.ts",
-      "import": "./es/tracker/*.js",
+      "types": "./esm/tracker/*.d.ts",
+      "import": "./esm/tracker/*.js",
       "require": "./lib/tracker/*.cjs",
-      "default": "./es/tracker/*.js"
+      "default": "./esm/tracker/*.js"
     },
     "./types": {
-      "types": "./es/types/index.d.ts",
-      "import": "./es/types/index.js",
+      "types": "./esm/types/index.d.ts",
+      "import": "./esm/types/index.js",
       "require": "./lib/types/index.cjs",
-      "default": "./es/types/index.js"
+      "default": "./esm/types/index.js"
     },
     "./types/*": {
-      "types": "./es/types/*.d.ts",
-      "import": "./es/types/*.js",
+      "types": "./esm/types/*.d.ts",
+      "import": "./esm/types/*.js",
       "require": "./lib/types/*.cjs",
-      "default": "./es/types/*.js"
+      "default": "./esm/types/*.js"
     },
     "./package.json": "./package.json"
   },
   "main": "./lib/index.cjs",
-  "module": "./es/index.js",
-  "types": "./es/index.d.ts",
-  "unpkg": "./dist/index.js",
-  "jsdelivr": "./dist/index.js",
+  "module": "./esm/index.js",
+  "types": "./esm/index.d.ts",
+  "unpkg": "./dist/index.min.js",
+  "jsdelivr": "./dist/index.min.js",
   "files": [
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "es",
+    "esm",
     "lib",
     "dist"
   ],
@@ -81,6 +81,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "typings": "./es/index.d.ts",
+  "typings": "./esm/index.d.ts",
   "browser": "./dist/index.js"
 }

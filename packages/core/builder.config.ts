@@ -1,5 +1,5 @@
 /**
- * @ldesign/tracker-vue 构建配置
+ * @ldesign/tracker-core 构建配置
  */
 import { defineConfig } from '@ldesign/builder'
 
@@ -9,10 +9,9 @@ export default defineConfig({
     { format: 'esm', dir: 'es', preserveModules: true, preserveModulesRoot: 'src' },
     { format: 'esm', dir: 'esm', preserveModules: true, preserveModulesRoot: 'src' },
     { format: 'cjs', dir: 'lib', preserveModules: true, preserveModulesRoot: 'src' },
-    { format: 'umd', dir: 'dist', name: 'LDesignTrackerVue' },
+    { format: 'umd', dir: 'dist', name: 'LDesignTrackerCore' },
   ],
-  external: ['vue', '@ldesign/tracker-core', '@ldesign/engine-core'],
+  external: [],
   dts: true,
   clean: true,
 })
-

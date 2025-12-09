@@ -1,1 +1,19 @@
+﻿# Build outputs
+es
+esm
+lib
+dist
+
+# Dependencies
 node_modules
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# Cache
+.rollup.cache
+*.tsbuildinfo
