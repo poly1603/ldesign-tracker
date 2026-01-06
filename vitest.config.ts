@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { resolve } from 'path'
 
 export default defineConfig({
   test: {
@@ -15,8 +16,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@ldesign/tracker-core': './packages/core/src/index.ts',
-      '@ldesign/tracker-vue': './packages/vue/src/index.ts',
+      '@ldesign/tracker-core': resolve(__dirname, './packages/core/src/index.ts'),
+      '@ldesign/tracker-vue': resolve(__dirname, './packages/vue/src/index.ts'),
     },
   },
 })
