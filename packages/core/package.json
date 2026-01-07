@@ -49,6 +49,18 @@
       "require": "./lib/types/*.cjs",
       "default": "./esm/types/*.js"
     },
+    "./utils": {
+      "types": "./esm/utils/index.d.ts",
+      "import": "./esm/utils/index.js",
+      "require": "./lib/utils/index.cjs",
+      "default": "./esm/utils/index.js"
+    },
+    "./utils/*": {
+      "types": "./esm/utils/*.d.ts",
+      "import": "./esm/utils/*.js",
+      "require": "./lib/utils/*.cjs",
+      "default": "./esm/utils/*.js"
+    },
     "./package.json": "./package.json"
   },
   "main": "./lib/index.cjs",

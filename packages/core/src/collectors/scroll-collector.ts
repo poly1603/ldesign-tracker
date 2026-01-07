@@ -94,7 +94,7 @@ export class ScrollCollector extends BaseCollector {
       this.emit({
         type: TrackEventType.SCROLL,
         name: `scroll_depth_${Math.floor(scrollDepth)}`,
-        data: scrollData,
+        data: scrollData as unknown as Record<string, unknown>,
       })
 
       this.lastEmitTime = now

@@ -170,7 +170,7 @@ export class InputCollector extends BaseCollector {
       type: TrackEventType.INPUT,
       name: `input_${fieldName || 'unknown'}`,
       target: this.getElementInfo(target),
-      data: inputData,
+      data: inputData as unknown as Record<string, unknown>,
     })
   }
 

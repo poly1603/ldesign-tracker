@@ -288,7 +288,7 @@ export class Tracker {
     // 错误收集器
     if (this.options.autoError) {
       const errorCollector = new ErrorCollector(
-        (event) => this.handleEvent(event),
+        (event: any) => this.handleEvent(event),
         { debug: this.options.debug }
       )
       this.collectors.set('error', errorCollector as unknown as Collector)
@@ -297,7 +297,7 @@ export class Tracker {
     // 性能收集器
     if (this.options.autoPerformance) {
       const performanceCollector = new PerformanceCollector(
-        (event) => this.handleEvent(event),
+        (event: any) => this.handleEvent(event),
         { debug: this.options.debug }
       )
       this.collectors.set('performance', performanceCollector as unknown as Collector)
@@ -369,6 +369,10 @@ export class Tracker {
       device: this.deviceInfo ?? undefined,
       priority: partialEvent.priority ?? EventPriority.NORMAL,
       properties: { ...this.options.globalProperties },
+      // 路由、页面和组件上下文信息
+      route: partialEvent.route,
+      page: partialEvent.page,
+      componentContext: partialEvent.componentContext,
     }
 
     // 前置处理
@@ -856,7 +860,7 @@ export class Tracker {
    * 更新配置
    */
   updateOptions(options: Partial<TrackerOptions>): void {
-    this.options = deepMerge(this.options, options)
+    this.options = deepMerge(this.options, options) as Required<TrackerOptions>
     this.logger.debug('Options updated')
   }
 }

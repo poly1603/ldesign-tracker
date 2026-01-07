@@ -102,7 +102,7 @@ export enum StorageType {
  * 追踪事件
  * @template T 事件数据类型
  */
-export interface TrackEvent<T = Record<string, unknown>> {
+export interface TrackEvent<T = unknown> {
   /** 事件唯一 ID */
   id: string
   /** 事件类型 */
@@ -133,6 +133,90 @@ export interface TrackEvent<T = Record<string, unknown>> {
   retryCount?: number
   /** 全局属性 */
   properties?: Record<string, unknown>
+  /** 路由信息 */
+  route?: RouteInfo
+  /** 组件上下文 */
+  componentContext?: ComponentContext
+  /** 页面上下文 */
+  page?: PageContext
+}
+
+/**
+ * 页面上下文
+ * @description 记录当前页面的详细信息
+ */
+export interface PageContext {
+  /** 页面 URL */
+  url: string
+  /** 页面路径 */
+  path: string
+  /** 页面标题 */
+  title: string
+  /** 路由名称 (Vue Router) */
+  routeName?: string
+  /** 页面组件名称 */
+  componentName?: string
+  /** 页面组件 Vue 文件路径 */
+  componentFile?: string
+  /** 匹配的路由组件链 */
+  matchedComponents?: Array<{
+    name?: string
+    file?: string
+  }>
+  /** 查询参数 */
+  query?: Record<string, string>
+  /** 路由参数 */
+  params?: Record<string, string>
+  /** hash */
+  hash?: string
+  /** 路由元信息 */
+  meta?: Record<string, unknown>
+  /** 来源页面 */
+  referrer?: string
+}
+
+/**
+ * 路由信息
+ * @description 记录当前页面的路由信息
+ */
+export interface RouteInfo {
+  /** 路由路径 */
+  path: string
+  /** 路由名称 */
+  name?: string
+  /** 路由参数 */
+  params?: Record<string, string>
+  /** 查询参数 */
+  query?: Record<string, string>
+  /** hash */
+  hash?: string
+  /** 完整路径 */
+  fullPath?: string
+  /** 路由元信息 */
+  meta?: Record<string, unknown>
+  /** 匹配的路由组件 */
+  matched?: string[]
+  /** 路由对应的 Vue 文件 */
+  componentFile?: string
+}
+
+/**
+ * 组件上下文
+ * @description 记录事件发生时的组件上下文
+ */
+export interface ComponentContext {
+  /** 当前组件名称 */
+  name?: string
+  /** 组件文件路径 */
+  file?: string
+  /** 组件链路 (从根组件到当前组件) */
+  chain?: string[]
+  /** 父组件名称 */
+  parent?: string
+  /** 所属页面组件 */
+  pageComponent?: string
+  /** 所属页面组件文件 */
+  pageComponentFile?: string
 }
 
 // ============================================================================
@@ -154,6 +238,8 @@ export interface ElementInfo {
   text?: string
   /** XPath 路径 */
   xpath?: string
+  /** CSS 选择器路径 */
+  cssPath?: string
   /** 元素位置 */
   position?: { x: number; y: number }
   /** 元素尺寸 */
@@ -164,6 +250,89 @@ export interface ElementInfo {
   trackData?: Record<string, string>
   /** 父元素信息 */
   parent?: Pick<ElementInfo, 'tagName' | 'id' | 'className'>
+  /** Vue 组件信息 */
+  component?: ComponentInfo
+  /** 链接信息 (a 标签) */
+  link?: LinkInfo
+  /** 表单元素信息 */
+  form?: FormElementInfo
+  /** 交互角色 (button, link, input 等) */
+  role?: string
+  /** aria 标签 */
+  ariaLabel?: string
+  /** 元素层级深度 */
+  depth?: number
+  /** 所属区域/容器信息 */
+  region?: RegionInfo
+}
+
+/**
+ * Vue 组件信息
+ * @description 记录 Vue 组件的详细信息
+ */
+export interface ComponentInfo {
+  /** 组件名称 */
+  name?: string
+  /** 组件文件路径 (开发环境) */
+  file?: string
+  /** 组件 UID */
+  uid?: number
+  /** 父组件名称 */
+  parentName?: string
+  /** 组件链路 (从根组件到当前组件的路径) */
+  chain?: string[]
+  /** 组件 props (部分关键 props) */
+  props?: Record<string, unknown>
+}
+
+/**
+ * 链接信息
+ */
+export interface LinkInfo {
+  /** 链接地址 */
+  href?: string
+  /** 链接目标 */
+  target?: string
+  /** 是否外部链接 */
+  isExternal?: boolean
+  /** 链接类型 (anchor, download, mailto, tel 等) */
+  type?: string
+}
+
+/**
+ * 表单元素信息
+ */
+export interface FormElementInfo {
+  /** 表单名称 */
+  formName?: string
+  /** 表单 ID */
+  formId?: string
+  /** 表单 action */
+  formAction?: string
+  /** 字段名 */
+  fieldName?: string
+  /** 字段类型 */
+  fieldType?: string
+  /** placeholder */
+  placeholder?: string
+  /** 是否必填 */
+  required?: boolean
+  /** 是否禁用 */
+  disabled?: boolean
+}
+
+/**
+ * 区域/容器信息
+ */
+export interface RegionInfo {
+  /** 区域名称 (data-region 或语义化标签) */
+  name?: string
+  /** 区域类型 (header, footer, sidebar, main, nav, section 等) */
+  type?: string
+  /** 区域 ID */
+  id?: string
+  /** 区域对应的组件名 */
+  component?: string
 }
 
 /**
@@ -333,8 +502,6 @@ export interface BaseCollectorOptions {
 export interface Collector {
   /** 收集器唯一名称 */
   readonly name: string
-  /** 收集器当前状态 */
-  readonly status: CollectorStatus
   /** 安装收集器 */
   install(): void
   /** 卸载收集器 */
@@ -343,57 +510,13 @@ export interface Collector {
   pause?(): void
   /** 恢复收集 */
   resume?(): void
+  /** 设置事件回调 */
+  setEventCallback?(callback: (event: Partial<TrackEvent>) => void): void
 }
 
-/**
- * 点击收集器配置
- */
-export interface ClickCollectorOptions extends BaseCollectorOptions {
-  /** 防抖延迟(ms) */
-  debounceDelay?: number
-  /** 是否捕获双击 */
-  captureDoubleClick?: boolean
-  /** 忽略的元素选择器 */
-  ignoreSelectors?: string[]
-  /** 只收集指定元素 */
-  includeSelectors?: string[]
-}
-
-/**
- * 滚动收集器配置
- */
-export interface ScrollCollectorOptions extends BaseCollectorOptions {
-  /** 节流间隔(ms) */
-  throttleInterval?: number
-  /** 滚动深度阈值(百分比) */
-  depthThresholds?: number[]
-  /** 是否记录每次滚动 */
-  trackEveryScroll?: boolean
-}
-
-/**
- * 输入收集器配置
- */
-export interface InputCollectorOptions extends BaseCollectorOptions {
-  /** 防抖延迟(ms) */
-  debounceDelay?: number
-  /** 敏感字段名称关键词 */
-  sensitiveFields?: string[]
-  /** 敏感字段类型 */
-  sensitiveTypes?: string[]
-}
-
-/**
- * 导航收集器配置
- */
-export interface NavigationCollectorOptions extends BaseCollectorOptions {
-  /** 是否跟踪 hash 变化 */
-  trackHash?: boolean
-  /** 是否跟踪 history 变化 */
-  trackHistory?: boolean
-  /** 是否记录页面停留时间 */
-  trackDuration?: boolean
-}
+// 注意：具体收集器的配置接口定义在各收集器文件中
+// ClickCollectorOptions, ScrollCollectorOptions, InputCollectorOptions, NavigationCollectorOptions
+// 分别在 click-collector.ts, scroll-collector.ts, input-collector.ts, navigation-collector.ts 中定义
 
 /**
  * 错误收集器配置
@@ -481,16 +604,45 @@ export interface PageLeaveData {
  * 点击数据
  */
 export interface ClickData {
-  /** 点击坐标 X */
+  /** 点击坐标 X (相对视口) */
   x: number
-  /** 点击坐标 Y */
+  /** 点击坐标 Y (相对视口) */
   y: number
+  /** 点击坐标 X (相对页面) */
+  pageX?: number
+  /** 点击坐标 Y (相对页面) */
+  pageY?: number
+  /** 点击坐标 X (相对元素) */
+  offsetX?: number
+  /** 点击坐标 Y (相对元素) */
+  offsetY?: number
   /** 按钮类型: 0-主键 1-中键 2-右键 */
   button: number
+  /** 按钮类型名称 */
+  buttonName?: 'left' | 'middle' | 'right'
   /** 页面宽度 */
   pageWidth?: number
   /** 页面高度 */
   pageHeight?: number
+  /** 视口宽度 */
+  viewportWidth?: number
+  /** 视口高度 */
+  viewportHeight?: number
+  /** 点击类型 */
+  clickType?: 'single' | 'double' | 'context'
+  /** 交互类型 (button, link, input, select 等) */
+  interactionType?: string
+  /** 按钮/链接文本 */
+  actionText?: string
+  /** 是否有修饰键 */
+  modifiers?: {
+    ctrl?: boolean
+    alt?: boolean
+    shift?: boolean
+    meta?: boolean
+  }
+  /** 距离上次点击的时间间隔 (ms) */
+  timeSinceLastClick?: number
 }
 
 /**

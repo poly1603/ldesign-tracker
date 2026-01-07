@@ -374,22 +374,24 @@ export function deepMerge<T extends object>(target: T, ...sources: Partial<T>[])
   const isObject = (item: unknown): item is object =>
     item !== null && typeof item === 'object' && !Array.isArray(item)
 
-  return sources.reduce((acc, source) => {
-    if (!source) return acc
+  const result = { ...target } as T
 
-    Object.keys(source).forEach((key) => {
-      const targetValue = (acc as any)[key]
+  for (const source of sources) {
+    if (!source) continue
+
+    for (const key of Object.keys(source)) {
+      const targetValue = (result as any)[key]
       const sourceValue = (source as any)[key]
 
       if (isObject(targetValue) && isObject(sourceValue)) {
-        (acc as any)[key] = deepMerge(targetValue, sourceValue)
+        (result as any)[key] = deepMerge(targetValue, sourceValue)
       } else if (sourceValue !== undefined) {
-        (acc as any)[key] = sourceValue
+        (result as any)[key] = sourceValue
       }
-    })
+    }
+  }
 
-    return acc
-  }, { ...target } as T)
+  return result
 }
 
 /**
@@ -723,6 +725,12 @@ export function decompressString(input: string): string {
     return input
   }
 }
+
+// ============================================================================
+// Vue 工具
+// ============================================================================
+
+export * from './vue-utils'
 
 // ============================================================================
 // 导出
